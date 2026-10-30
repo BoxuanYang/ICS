@@ -36,6 +36,17 @@ uv venv --python=3.12
 source .venv/bin/activate
 ```
 
+cd /path/to/ICS
+
+conda create -n minisgl python=3.12 pip setuptools wheel -y
+conda activate minisgl
+
+python -m pip install --upgrade pip
+python -m pip install -e .
+python -m pip install torch-c-dlpack-ext
+
+
+
 **Prerequisites**: Mini-SGLang relies on CUDA kernels that are JIT-compiled. Ensure you have the **NVIDIA CUDA Toolkit** installed and that its version matches your driver's version. You can check your driver's CUDA capability with `nvidia-smi`.
 
 ### 2. Installation
