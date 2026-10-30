@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, List, NamedTuple, NoReturn, Set, Tuple, TypeAlias
 
 import torch
@@ -70,6 +71,11 @@ class Scheduler(SchedulerIOMixin):
         self.eos_token_id = self.tokenizer.eos_token_id
         self.token_pool = self.table_manager.token_pool
         self.prefill_budget = config.max_extend_tokens
+        # Per-request decode timing starts after the prefill token is ready. Decode
+        # tokens therefore exclude the first generated token, matching standard
+        # time-per-output-token (TPOT) measurement.
+        self.decode_start_times: dict[int, float] = {}
+        self.decode_token_counts: dict[int, int] = {}
         # self.config = config
 
         # Initialize the I/O mixin
@@ -141,6 +147,7 @@ class Scheduler(SchedulerIOMixin):
 
         batch, (_, next_tokens_cpu, copy_done) = last_data[0].batch, last_data[1]
         copy_done.synchronize()
+        batch_done_time = time.perf_counter()
         reply: List[DetokenizeMsg] = []
         new_finished_reqs: Set[Req] = set()
         with self.cache_manager.lazy_free_region():
@@ -155,8 +162,20 @@ class Scheduler(SchedulerIOMixin):
                     finished |= next_token == self.eos_token_id
                 reply.append(DetokenizeMsg(uid=req.uid, next_token=next_token, finished=finished))
 
+                is_duplicate_finish = req in self.finished_reqs
+                if not is_duplicate_finish:
+                    if batch.is_decode:
+                        self.decode_token_counts[req.uid] = (
+                            self.decode_token_counts.get(req.uid, 0) + 1
+                        )
+                    if finished:
+                        self._log_decode_speed(req.uid, batch_done_time)
+                    elif batch.is_prefill:
+                        self.decode_start_times[req.uid] = batch_done_time
+                        self.decode_token_counts[req.uid] = 0
+
                 # NOTE: overlap scheduling may make the request freed twice, skip second free
-                if finished and req not in self.finished_reqs:
+                if finished and not is_duplicate_finish:
                     self.decode_manager.remove_req(req)
                     self._free_req_resources(req)
                     new_finished_reqs.add(req)
@@ -191,6 +210,8 @@ class Scheduler(SchedulerIOMixin):
             logger.debug_rank0("Aborting request %d", msg.uid)
             req_to_free = self.prefill_manager.abort_req(msg.uid)
             req_to_free = req_to_free or self.decode_manager.abort_req(msg.uid)
+            self.decode_start_times.pop(msg.uid, None)
+            self.decode_token_counts.pop(msg.uid, None)
             if req_to_free is not None:
                 self._free_req_resources(req_to_free)
         else:
@@ -200,6 +221,30 @@ class Scheduler(SchedulerIOMixin):
     def _free_req_resources(self, req: Req) -> None:
         self.table_manager.free(req.table_idx)
         self.cache_manager.cache_req(req, finished=True)
+
+    def _log_decode_speed(self, uid: int, end_time: float) -> None:
+        start_time = self.decode_start_times.pop(uid, None)
+        decode_tokens = self.decode_token_counts.pop(uid, 0)
+        if start_time is None or decode_tokens == 0:
+            logger.info_rank0(
+                "Request %d decode stats: t_decode=0.000000 s, decode_tokens=0, "
+                "decode_time_per_token=N/A (completed during prefill)",
+                uid,
+            )
+            return
+
+        decode_time = end_time - start_time
+        time_per_token = decode_time / decode_tokens
+        tokens_per_second = decode_tokens / decode_time if decode_time > 0 else float("inf")
+        logger.info_rank0(
+            "Request %d decode stats: t_decode=%.6f s, decode_tokens=%d, "
+            "decode_time_per_token=%.3f ms/token, decode_speed=%.2f tokens/s",
+            uid,
+            decode_time,
+            decode_tokens,
+            time_per_token * 1000,
+            tokens_per_second,
+        )
 
     def _prepare_batch(self, batch: Batch) -> ForwardInput:
         self.engine.graph_runner.pad_batch(batch)
