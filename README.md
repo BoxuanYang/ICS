@@ -149,6 +149,9 @@ You can also use `/reset` to clear the chat history.
 
 ## Benchmark
 
+For a FastServe-style high-concurrency ShareGPT workload with a Poisson RPS
+sweep, see [benchmark/fastserve](./benchmark/fastserve/README.md).
+
 ### Offline inference
 
 See [bench.py](./benchmark/offline/bench.py) for more details. Set `MINISGL_DISABLE_OVERLAP_SCHEDULING=1` for ablation study on overlap scheduling.
