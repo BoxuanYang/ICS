@@ -59,6 +59,17 @@ cd mini-sglang && uv venv --python=3.12 && source .venv/bin/activate
 uv pip install -e .
 ```
 
+#### Build KTransformers
+
+KTransformers is kept under `third_party/ktransformers` for the planned CPU
+expert-offload integration. Its pinned `llama.cpp`, `pybind11`, SGLang, and
+FlashInfer sources are included. Build and install the local `kt-kernel` from
+the repository root with:
+
+```bash
+CPUINFER_LLAMA_BUILD_COPY=ON bash third_party/ktransformers/kt-kernel/install.sh
+```
+
 <details>
 <summary><b>💡 Installing on Windows (WSL2)</b></summary>
 
