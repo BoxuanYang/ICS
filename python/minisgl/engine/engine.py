@@ -51,20 +51,53 @@ class Engine:
             self.model = create_model(config.model_config)
         self.model.load_state_dict(self._load_weight_state_dict(config))
 
+        self.expert_memory = None
+        if config.expert_profile:
+            from minisgl.moe import ExpertEvictionProfile, ExpertStorageCatalog
+            from minisgl.moe.kt import KTExperts
+            from minisgl.utils import download_hf_weight
+
+            layers = [layer.mlp.experts for layer in self.model.model.layers.op_list]
+            profile = ExpertEvictionProfile.from_file(config.expert_profile)
+            catalog = ExpertStorageCatalog.from_layers(layers, profile)
+            kt = KTExperts(
+                layers,
+                download_hf_weight(config.model_path),
+                config.kt_cpu_threads,
+                max(config.max_forward_len, config.max_running_req),
+                catalog,
+            )
+            for layer in layers:
+                layer._kt_backend = kt
+
         # ======================= KV cache initialization ========================
         self.num_pages = self._determine_num_pages(init_free_memory, config)
         num_tokens = self.num_pages * config.page_size
-        self.ctx.kv_cache = self.kv_cache = create_kvcache_pool(
-            model_config=config.model_config,
-            num_pages=self.num_pages + 1,  # +1 for dummy page
-            page_size=config.page_size,
-            device=self.device,
-            dtype=self.dtype,
-        )
+        if config.expert_profile:
+            from minisgl.kvcache.expert_pool import ExpertKVCache
+            from minisgl.moe import ExpertMemoryManager, ExpertOffloadController
+
+            self.kv_cache = ExpertKVCache(config.model_config, self.num_pages, self.device, catalog)
+            self.expert_memory = ExpertMemoryManager(
+                ExpertOffloadController(profile),
+                catalog,
+                self.kv_cache.allocator,
+                kt,
+            )
+        else:
+            self.kv_cache = create_kvcache_pool(
+                model_config=config.model_config,
+                num_pages=self.num_pages + 1,  # +1 for dummy page
+                page_size=config.page_size,
+                device=self.device,
+                dtype=self.dtype,
+            )
+        self.ctx.kv_cache = self.kv_cache
 
         # ======================= Page table initialization ========================
         # NOTE: 1. aligned to 128 bytes; 2. store raw locations instead of pages
-        self.max_seq_len = min(config.max_seq_len, num_tokens)
+        capacity = self.kv_cache.total_slots - 1 if config.expert_profile else num_tokens
+        self.max_seq_len = min(config.max_seq_len, capacity)
         aligned_max_seq_len = _align_up_32(self.max_seq_len)
         self.ctx.page_table = self.page_table = torch.zeros(  # + 1 for dummy request
             (config.max_running_req + 1, aligned_max_seq_len),
@@ -73,9 +106,15 @@ class Engine:
         )
 
         # ======================= Attention & MoE backend initialization ========================
-        self.ctx.attn_backend = self.attn_backend = create_attention_backend(
-            config.attention_backend, config.model_config
-        )
+        if config.expert_profile:
+            from minisgl.attention.expert import ExpertAttention
+
+            self.attn_backend = ExpertAttention(config.model_config)
+        else:
+            self.attn_backend = create_attention_backend(
+                config.attention_backend, config.model_config
+            )
+        self.ctx.attn_backend = self.attn_backend
         if config.model_config.is_moe:
             self.ctx.moe_backend = self.moe_backend = create_moe_backend(config.moe_backend)
 
@@ -218,6 +257,20 @@ def _align_up_32(num: int) -> int:
 def _adjust_config(config: EngineConfig):
     def override(attr: str, value: Any):  # this is dangerous, use with caution
         object.__setattr__(config, attr, value)
+
+    if config.expert_profile:
+        if config.tp_info.size != 1 or config.dtype != torch.bfloat16:
+            raise ValueError("Expert memory sharing requires TP=1 and BF16")
+        if config.model_config.model_type != "qwen3_moe" or config.use_dummy_weight:
+            raise ValueError("Expert memory sharing requires a real Qwen3 MoE checkpoint")
+        if config.page_size != 1 or config.kt_cpu_threads < 1:
+            raise ValueError("Expert memory sharing requires page_size=1 and positive KT threads")
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        override("attention_backend", "expert")
+        logger.info_rank0(
+            "KV-MoE enabled: pointer-table attention, CUDA graphs/overlap scheduling off"
+        )
 
     if config.attention_backend == "auto":
         backend = "trtllm" if is_sm100_supported() else ("fa,fi" if is_sm90_supported() else "fi")

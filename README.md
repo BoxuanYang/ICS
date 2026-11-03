@@ -61,14 +61,45 @@ uv pip install -e .
 
 #### Build KTransformers
 
-KTransformers is kept under `third_party/ktransformers` for the planned CPU
-expert-offload integration. Its pinned `llama.cpp`, `pybind11`, SGLang, and
-FlashInfer sources are included. Build and install the local `kt-kernel` from
-the repository root with:
+KTransformers is pinned as a Git submodule under `third_party/ktransformers`.
+For a fresh checkout of this repository, use `git clone --recurse-submodules <repo-url>`.
+To initialize an existing checkout (including KT's nested dependencies), run:
 
 ```bash
-CPUINFER_LLAMA_BUILD_COPY=ON bash third_party/ktransformers/kt-kernel/install.sh
+git submodule update --init --recursive
 ```
+
+For later updates, run `git pull --recurse-submodules` followed by
+`git submodule update --init --recursive` if new submodules were introduced.
+This uses the commits pinned by the parent repositories, not upstream branch tips.
+Build and install the local `kt-kernel` on Linux from the repository root with:
+
+```bash
+cd third_party/ktransformers/kt-kernel
+CPUINFER_USE_CUDA=1 bash install.sh
+cd ../../..
+```
+
+The KV–MoE work currently targets a single GPU running Qwen3-30B-A3B.
+`coldest_experts.txt` is the ordered eviction allowlist; the initial policy has
+no cumulative-frequency limit and exposes `check_stop_moe_eviction()` for later changes.
+Restoration is eager: once both regions belonging to an offloaded expert have
+released their final KV references, restore that expert immediately, regardless
+of global pressure or profile order. Prefix-cache references count as live KV.
+
+Enable the implementation with `--expert-profile coldest_experts.txt`. This selects
+pointer-table attention, disables CUDA graphs and batch-overlap scheduling, and
+uses KT's BF16 CPU backend (AMX when supported, otherwise KT's AVX2 backend).
+CPU/GPU expert computation still overlaps within each MoE forward. Use Linux,
+Python 3.11+, CUDA toolkit, PyTorch 2.9.1 and the pinned KT source above.
+
+For the short end-to-end demo, run `bash scripts/demo_kv_moe.sh /path/to/Qwen3-30B-A3B`,
+then `python scripts/check_kv_moe.py` in another terminal. The small persistent
+pool forces expert eviction; `--cache-type naive` lets completed requests release
+all KV so eager restoration is visible. Radix prefix caching is also supported,
+but cached prefixes retain KV ownership until evicted.
+
+See [the implementation report](docs/kv_moe_implementation.md) for changes and validation.
 
 <details>
 <summary><b>💡 Installing on Windows (WSL2)</b></summary>

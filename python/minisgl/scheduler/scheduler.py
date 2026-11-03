@@ -57,9 +57,19 @@ class Scheduler(SchedulerIOMixin):
 
         # initialize other managers
         self.table_manager = TableManager(config.max_running_req, self.engine.page_table)
-        self.cache_manager = CacheManager(
-            self.engine.num_pages, config.page_size, self.engine.page_table, config.cache_type
-        )
+        if self.engine.expert_memory is not None:
+            from .expert_cache import ExpertCacheManager
+
+            self.cache_manager = ExpertCacheManager(
+                self.engine.kv_cache,
+                self.engine.expert_memory,
+                self.engine.page_table,
+                config.cache_type,
+            )
+        else:
+            self.cache_manager = CacheManager(
+                self.engine.num_pages, config.page_size, self.engine.page_table, config.cache_type
+            )
         self.decode_manager = DecodeManager(config.page_size)
         self.prefill_manager = PrefillManager(
             self.cache_manager, self.table_manager, self.decode_manager
@@ -125,7 +135,7 @@ class Scheduler(SchedulerIOMixin):
 
     @torch.inference_mode()
     def run_forever(self) -> NoReturn:
-        if ENV.DISABLE_OVERLAP_SCHEDULING:
+        if ENV.DISABLE_OVERLAP_SCHEDULING or self.engine.expert_memory is not None:
             with self.engine_stream_ctx:
                 self.engine.stream.wait_stream(self.stream)
                 while True:

@@ -9,6 +9,7 @@ from .base import BaseOP
 class MoELayer(BaseOP):
     def __init__(
         self,
+        layer_id: int,
         num_experts: int,
         top_k: int,
         hidden_size: int,
@@ -19,6 +20,9 @@ class MoELayer(BaseOP):
     ):
         super().__init__()
 
+        if layer_id < 0:
+            raise ValueError("layer_id must be non-negative")
+        self.layer_id = layer_id
         self.num_experts = num_experts
         self.top_k = top_k
         self.hidden_size = hidden_size
@@ -42,9 +46,20 @@ class MoELayer(BaseOP):
             intermediate_size_per_partition,
         )
 
+    def expert_tensor_views(self, expert_id: int) -> tuple[torch.Tensor, torch.Tensor]:
+        if not 0 <= expert_id < self.num_experts:
+            raise IndexError(
+                f"Expert id {expert_id} is outside [0, {self.num_experts}) "
+                f"for layer {self.layer_id}"
+            )
+        return self.gate_up_proj[expert_id], self.down_proj[expert_id]
+
     def forward(self, hidden_states: torch.Tensor, router_logits: torch.Tensor):
         ctx = get_global_ctx()
-        final_hidden_states = ctx.moe_backend.forward(
+        backend = getattr(self, "_kt_backend", ctx.moe_backend)
+        extra = {"layer_id": self.layer_id} if hasattr(self, "_kt_backend") else {}
+        final_hidden_states = backend.forward(
+            **extra,
             hidden_states=hidden_states,
             w1=self.gate_up_proj,
             w2=self.down_proj,

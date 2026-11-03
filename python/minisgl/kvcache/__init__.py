@@ -15,6 +15,12 @@ from .base import (
     MatchResult,
     SizeInfo,
 )
+from .unified import (
+    KVBlockRef,
+    TemporaryKVRegion,
+    TemporaryKVRegionState,
+    UnifiedKVAllocator,
+)
 
 
 class CacheManagerCreator(Protocol):
@@ -71,4 +77,8 @@ __all__ = [
     "SizeInfo",
     "MatchResult",
     "SUPPORTED_CACHE_MANAGER",
+    "KVBlockRef",
+    "TemporaryKVRegion",
+    "TemporaryKVRegionState",
+    "UnifiedKVAllocator",
 ]

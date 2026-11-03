@@ -66,6 +66,12 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
     from minisgl.moe import SUPPORTED_MOE_BACKENDS
 
     parser = argparse.ArgumentParser(description="MiniSGL Server Arguments")
+    parser.add_argument(
+        "--expert-profile",
+        default=None,
+        help="Enable single-GPU BF16 Qwen3 MoE memory sharing using this candidate file.",
+    )
+    parser.add_argument("--kt-cpu-threads", type=int, default=ServerArgs.kt_cpu_threads)
 
     parser.add_argument(
         "--model-path",

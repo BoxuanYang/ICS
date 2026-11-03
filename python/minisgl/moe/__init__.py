@@ -5,6 +5,18 @@ from typing import Protocol
 from minisgl.utils import Registry, init_logger
 
 from .base import BaseMoeBackend
+from .memory import ExpertMemoryManager
+from .offload import (
+    EvictionPlan,
+    ExpertEvictionProfile,
+    ExpertKey,
+    ExpertOffloadController,
+    ExpertProfileEntry,
+    ExpertResidencyState,
+    ExpertResidencyTable,
+    KVPressureSnapshot,
+)
+from .storage import ExpertStorage, ExpertStorageCatalog
 
 logger = init_logger(__name__)
 
@@ -29,6 +41,17 @@ def create_moe_backend(backend: str) -> BaseMoeBackend:
 
 __all__ = [
     "BaseMoeBackend",
+    "EvictionPlan",
+    "ExpertEvictionProfile",
+    "ExpertKey",
+    "ExpertMemoryManager",
+    "ExpertOffloadController",
+    "ExpertProfileEntry",
+    "ExpertResidencyState",
+    "ExpertResidencyTable",
+    "ExpertStorage",
+    "ExpertStorageCatalog",
+    "KVPressureSnapshot",
     "create_moe_backend",
     "SUPPORTED_MOE_BACKENDS",
 ]

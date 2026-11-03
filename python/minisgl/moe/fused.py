@@ -96,7 +96,6 @@ def get_default_config(
     K: int,
     topk: int,
 ) -> Dict[str, int]:
-
     config = {
         "BLOCK_SIZE_M": 64,
         "BLOCK_SIZE_N": 64,
@@ -132,6 +131,7 @@ def fused_experts_impl(
     topk_ids: torch.Tensor,
     activation: str = "silu",
     apply_router_weight_on_input: bool = False,
+    masked_experts: bool = False,
 ) -> torch.Tensor:
     from minisgl.kernel import fused_moe_kernel_triton, moe_sum_reduce_triton
     from minisgl.layers import gelu_and_mul, silu_and_mul
@@ -154,7 +154,8 @@ def fused_experts_impl(
     )
     config = get_config_func(M)
 
-    cache = torch.empty(
+    allocate = torch.zeros if masked_experts else torch.empty
+    cache = allocate(
         M * topk_ids.shape[1] * max(N, w2.shape[1]),
         device=hidden_states.device,
         dtype=hidden_states.dtype,
@@ -162,7 +163,7 @@ def fused_experts_impl(
     intermediate_cache1 = cache[: M * topk_ids.shape[1] * N].view(
         (M, topk_ids.shape[1], N),
     )
-    intermediate_cache2 = torch.empty(
+    intermediate_cache2 = allocate(
         (M * topk_ids.shape[1], N // 2),
         device=hidden_states.device,
         dtype=hidden_states.dtype,
@@ -205,6 +206,10 @@ def fused_experts_impl(
     )
     FN_MAP = {"silu": silu_and_mul, "gelu": gelu_and_mul}
     FN_MAP[activation](intermediate_cache1.view(-1, N), intermediate_cache2)
+    # The output aliases the first GEMM's scratch storage. Skipped CPU assignments
+    # must contribute zero, not stale gate/up values, to the final top-k sum.
+    if masked_experts:
+        intermediate_cache3.zero_()
     fused_moe_kernel_triton(
         intermediate_cache2,
         w2,
