@@ -18,6 +18,39 @@ client falls back to counting its one-token-per-event streaming chunks. The
 reported normalized latency is the arithmetic mean of `t_i` over successful
 requests in one RPS group. Failed requests are listed separately and excluded.
 
+## Prepare the ShareGPT dataset
+
+The ShareGPT benchmark downloads its dataset from Hugging Face on first use. If
+the compute node cannot access Hugging Face reliably, download the dataset
+before running the benchmark:
+
+```bash
+mkdir -p benchmark/fastserve/datasets
+
+DATASET_URL="${HF_ENDPOINT:-https://huggingface.co}/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json"
+DATASET_PATH="benchmark/fastserve/datasets/ShareGPT_V3_unfiltered_cleaned_split.json"
+
+curl -L --fail --retry 5 -C - \
+  -o benchmark/fastserve/datasets/ShareGPT_V3_unfiltered_cleaned_split.json \
+  "https://hf-mirror.com/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json"
+```
+
+If Hugging Face is not reachable from the current network, set `HF_ENDPOINT`
+to an accessible Hugging Face mirror before running the commands above:
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+Then pass the local file to the benchmark so it does not try to download the
+dataset again:
+
+```bash
+python benchmark/fastserve/bench_sharegpt_normalized_latency.py \
+  --dataset benchmark/fastserve/datasets/ShareGPT_V3_unfiltered_cleaned_split.json
+```
+
+
 ## Run
 
 Start Mini-SGLang (its default port is 1919):

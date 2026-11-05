@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=0 python -m minisgl \
-  --model-path /hy-tmp/Qwen3-30B-A3B \
+CUDA_VISIBLE_DEVICES=2 python -m minisgl \
+  --model-path /data/models/Qwen3-30B-A3B \
   --host 0.0.0.0 \
   --port 1919 \
   --dtype bfloat16 \
@@ -12,7 +12,7 @@ CUDA_VISIBLE_DEVICES=0 python -m minisgl \
   
 
 curl http://127.0.0.1:1919/v1/chat/completions   -H 'Content-Type: application/json'   -d '{
-    "model": "/hy-tmp/Qwen3-30B-A3B",
+    "model": "/data/models/Qwen3-30B-A3B",
     "messages": [
       {
         "role": "user",
