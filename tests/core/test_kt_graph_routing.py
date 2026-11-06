@@ -16,12 +16,12 @@ class _Wrapper:
         return torch.zeros_like(hidden_states)
 
 
-def test_graph_capture_records_hybrid_path_with_all_gpu_mask(monkeypatch) -> None:
+def test_graph_selects_pure_gpu_or_hybrid_topology(monkeypatch) -> None:
     import minisgl.core as core
     import minisgl.moe.kt as kt
 
     ctx = Context(page_size=1)
-    ctx._batch = SimpleNamespace(attn_metadata=SimpleNamespace(graph_mode=True))
+    ctx._batch = SimpleNamespace(attn_metadata=SimpleNamespace(graph_mode=True, moe_hybrid=False))
     monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
     monkeypatch.setattr(
         kt,
@@ -58,9 +58,16 @@ def test_graph_capture_records_hybrid_path_with_all_gpu_mask(monkeypatch) -> Non
     }
 
     torch.testing.assert_close(backend.forward(0, **kwargs), torch.ones_like(x))
-    assert wrapper.submissions == 1
+    assert wrapper.submissions == 0
 
-    # Outside graph capture, an all-GPU batch retains the original fast path.
-    ctx._batch.attn_metadata.graph_mode = False
+    # The separately captured hybrid graph retains KT callbacks even when the
+    # current mask happens to be all-GPU, so later mask flips need no recapture.
+    ctx._batch.attn_metadata.moe_hybrid = True
     torch.testing.assert_close(backend.forward(0, **kwargs), torch.ones_like(x))
     assert wrapper.submissions == 1
+
+    ctx._batch.attn_metadata.moe_hybrid = False
+    backend.offloaded[0].add(1)
+    torch.testing.assert_close(backend.forward(0, **kwargs), torch.ones_like(x))
+    assert wrapper.submissions == 2
+    assert backend.has_offloaded_experts()

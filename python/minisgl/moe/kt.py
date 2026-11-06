@@ -74,6 +74,9 @@ class KTExperts:
         self.offloaded[layer].remove(expert)
         logger.info_rank0("KV-MoE restore layer=%d expert=%d", layer, expert)
 
+    def has_offloaded_experts(self) -> bool:
+        return any(self.offloaded.values())
+
     def forward(self, layer_id: int, **kwargs) -> torch.Tensor:
         x = kwargs["hidden_states"]
         weights, ids = fused_topk(x, kwargs["gating_output"], kwargs["topk"], kwargs["renormalize"])
@@ -86,15 +89,15 @@ class KTExperts:
             metadata = getattr(get_global_ctx().batch, "attn_metadata", None)
         except AssertionError:  # Direct backend/kernel tests do not install an engine context.
             metadata = None
-        graph_capture = bool(getattr(metadata, "graph_mode", False))
-        if not graph_capture and not self.offloaded[layer_id]:
+        hybrid_graph = bool(getattr(metadata, "moe_hybrid", False))
+        if not hybrid_graph and not self.offloaded[layer_id]:
             return fused_experts_impl(x, kwargs["w1"], kwargs["w2"], weights, ids)
 
         wrapper = self.wrappers[layer_id]
         stream = torch.cuda.current_stream(x.device).cuda_stream
-        # Always submit the hybrid path so CUDA graph capture has one stable topology.
-        # KT reads its pinned CPU mask at replay time; the GPU kernel reads the
-        # same residency state from the fixed-address CUDA mask below.
+        # The hybrid graph has one stable topology and reads the masks at replay.
+        # A separate pure-GPU graph avoids these host callbacks when every expert
+        # has returned to the GPU.
         wrapper.submit_forward(x, ids, weights, stream)
         gpu_ids = ids.masked_fill(~self.gpu_masks[layer_id][ids.long()], -1)
         gpu_output = fused_experts_impl(

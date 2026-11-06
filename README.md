@@ -88,12 +88,19 @@ released their final KV references, restore that expert immediately, regardless
 of global pressure or profile order. Prefix-cache references count as live KV.
 
 Enable the implementation with `--expert-profile coldest_experts.txt`. This selects
-pointer-table attention, keeps decode CUDA graphs enabled, disables batch-overlap
-scheduling, and uses KT's BF16 CPU backend (AMX when supported, otherwise KT's AVX2 backend).
-The captured hybrid MoE path reads fixed-address CPU/GPU expert masks at replay time,
-so expert eviction and restoration do not require graph recapture.
+pointer-table attention, decode CUDA graphs, overlap scheduling, and KT's BF16 CPU
+backend (AMX when supported, otherwise KT's AVX2 backend). Decode captures both a
+pure-GPU graph and a hybrid graph: the fast graph has no KT host callbacks, while
+the hybrid graph reads fixed-address CPU/GPU expert masks at replay time. Expert
+eviction and restoration therefore do not require graph recapture. Residency
+transitions synchronize with outstanding engine work before a weight buffer changes
+ownership; batches without a transition retain normal overlap scheduling.
 CPU/GPU expert computation still overlaps within each MoE forward. Use Linux,
 Python 3.11+, CUDA toolkit, PyTorch 2.9.1 and the pinned KT source above.
+
+Set `--cuda-graph-max-bs` at least as high as the decode batch sizes being benchmarked.
+For example, `--max-running-requests 256 --cuda-graph-max-bs 8` runs batches above 8
+eagerly and is not a valid graph-on versus graph-off throughput comparison.
 
 For the short end-to-end demo, run `bash scripts/demo_kv_moe.sh /path/to/Qwen3-30B-A3B`,
 then `python scripts/check_kv_moe.py` in another terminal. The small persistent

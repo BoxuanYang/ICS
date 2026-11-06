@@ -70,6 +70,24 @@ def test_execution_switch_precedes_storage_reuse() -> None:
     assert manager.allocator.temporary_available_blocks == 3
 
 
+def test_transition_barrier_orders_eviction_and_restoration() -> None:
+    manager = _manager()
+    events = manager.backend.events
+    manager.transition_barrier = lambda: events.append(("barrier", None))
+
+    manager.begin_eviction((0, 0))
+    manager.complete_eviction((0, 0))
+    manager.allocator.release(manager.allocator.allocate(3))
+
+    assert events == [
+        ("barrier", None),
+        ("cpu", (0, 0)),
+        ("barrier", None),
+        ("copy", (0, 0)),
+        ("gpu", (0, 0)),
+    ]
+
+
 def test_eager_restore_on_final_release_without_low_pressure_or_draining() -> None:
     manager = _manager()
     for key in ((0, 0), (0, 1)):

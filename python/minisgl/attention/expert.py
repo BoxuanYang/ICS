@@ -21,6 +21,7 @@ class ExpertMetadata(BaseAttnMetadata):
     page_table: torch.Tensor | None = None
     seq_lens: torch.Tensor | None = None
     graph_mode: bool = False
+    moe_hybrid: bool = False
 
     def get_last_indices(self, bs: int) -> torch.Tensor:
         return self.last_indices[:bs]

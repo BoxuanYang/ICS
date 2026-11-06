@@ -89,6 +89,7 @@ class GraphRunner:
         vocab_size: int,
         dummy_req: Req,
         capture_batch_sizes_hook: Callable[[List[int]], None] | None = None,
+        use_hybrid_graph: Callable[[], bool] | None = None,
     ) -> None:
         cuda_graph_bs = _determine_cuda_graph_bs(
             cuda_graph_bs=cuda_graph_bs,
@@ -101,12 +102,15 @@ class GraphRunner:
         self.dummy_req = dummy_req
         self.stream = stream
         self.device = device
+        self.use_hybrid_graph = use_hybrid_graph
+        self._logged_replay_variants: set[str] = set()
         if capture_batch_sizes_hook is not None and self.graph_bs_list:
             capture_batch_sizes_hook(self.graph_bs_list)
         self._capture_graphs(max_seq_len, vocab_size, model)
 
     def _capture_graphs(self, max_seq_len: int, vocab_size: int, model: BaseLLMModel):
         self.graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
+        self.hybrid_graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
         if self.max_graph_bs == 0:
             return logger.info_rank0("CUDA graph is disabled.")
 
@@ -133,17 +137,25 @@ class GraphRunner:
             free_memory = get_free_memory(self.device)
             pbar.desc = f"Capturing graphs: bs = {bs:<3} | avail_mem = {mem_GB(free_memory)}"
             pbar.refresh()
-            graph = torch.cuda.CUDAGraph()
             batch = Batch(reqs=[self.dummy_req] * bs, phase="decode")
             batch.padded_reqs = batch.reqs
             self.attn_backend.prepare_for_capture(batch)
             self.buffer.set_batch(batch)
             with get_global_ctx().forward_batch(batch):
+                batch.attn_metadata.moe_hybrid = False
                 self.buffer.logits[:bs] = model.forward()
+                graph = torch.cuda.CUDAGraph()
                 with torch.cuda.graph(graph, pool=pool, stream=self.stream):
                     self.buffer.logits[:bs] = model.forward()
-            if pool is None:
-                pool = graph.pool()  # reuse cuda graph handle to reduce memory
+                if pool is None:
+                    pool = graph.pool()  # reuse one pool; graphs never run concurrently
+                if self.use_hybrid_graph is not None:
+                    batch.attn_metadata.moe_hybrid = True
+                    self.buffer.logits[:bs] = model.forward()
+                    hybrid_graph = torch.cuda.CUDAGraph()
+                    with torch.cuda.graph(hybrid_graph, pool=pool, stream=self.stream):
+                        self.buffer.logits[:bs] = model.forward()
+                    self.hybrid_graph_map[bs] = hybrid_graph
             self.graph_map[bs] = graph
 
         free_memory = get_free_memory(self.device)
@@ -155,7 +167,17 @@ class GraphRunner:
     def replay(self, batch: Batch) -> torch.Tensor:
         assert self.can_use_cuda_graph(batch)
         self.buffer.copy_from(batch)
-        g = self.graph_map[batch.padded_size]
+        use_hybrid = self.use_hybrid_graph is not None and self.use_hybrid_graph()
+        variant = "hybrid" if use_hybrid else "pure-gpu"
+        graphs = self.hybrid_graph_map if use_hybrid else self.graph_map
+        if variant not in self._logged_replay_variants:
+            logger.info_rank0(
+                "CUDA graph replay active: variant=%s, padded_batch_size=%d",
+                variant,
+                batch.padded_size,
+            )
+            self._logged_replay_variants.add(variant)
+        g = graphs[batch.padded_size]
         self.attn_backend.prepare_for_replay(batch)
         g.replay()
         return self.buffer.logits[: batch.size]
@@ -171,4 +193,5 @@ class GraphRunner:
     # NOTE: This must be called before freeing NCCL resources to prevent program hang
     def destroy_cuda_graphs(self) -> None:
         del self.graph_map
+        del self.hybrid_graph_map
         gc.collect()

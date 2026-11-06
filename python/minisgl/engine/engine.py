@@ -85,6 +85,7 @@ class Engine:
                 catalog,
                 self.kv_cache.allocator,
                 kt,
+                transition_barrier=self.stream.synchronize,
             )
         else:
             self.kv_cache = create_kvcache_pool(
@@ -151,7 +152,20 @@ class Engine:
             capture_batch_sizes_hook=(
                 self.kt_backend.set_capture_batch_sizes if self.kt_backend is not None else None
             ),
+            use_hybrid_graph=(
+                self.kt_backend.has_offloaded_experts if self.kt_backend is not None else None
+            ),
         )
+        if (
+            self.graph_runner.max_graph_bs
+            and self.graph_runner.max_graph_bs < config.max_running_req
+        ):
+            logger.warning_rank0(
+                "CUDA graph only covers decode batches up to %d; batches %d..%d run eager",
+                self.graph_runner.max_graph_bs,
+                self.graph_runner.max_graph_bs + 1,
+                config.max_running_req,
+            )
 
     def _init_communication(self, config: EngineConfig) -> torch.distributed.ProcessGroup:
         if config.tp_info.size == 1 or config.use_pynccl:
@@ -272,7 +286,7 @@ def _adjust_config(config: EngineConfig):
             raise ValueError("Expert memory sharing requires page_size=1 and positive KT threads")
         override("attention_backend", "expert")
         logger.info_rank0(
-            "KV-MoE enabled: pointer-table attention with CUDA graph decode; overlap scheduling off"
+            "KV-MoE enabled: pointer-table attention, dual CUDA graphs, and overlap scheduling"
         )
 
     if config.attention_backend == "auto":

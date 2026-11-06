@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Callable, Protocol
 
 from minisgl.kvcache.unified import TemporaryKVRegion, TemporaryKVRegionState, UnifiedKVAllocator
 
@@ -41,6 +41,7 @@ class ExpertMemoryManager:
         storage_catalog: ExpertStorageCatalog,
         allocator: UnifiedKVAllocator,
         backend: ExpertMemoryBackend,
+        transition_barrier: Callable[[], None] | None = None,
     ) -> None:
         catalog_keys = frozenset(storage.key for storage in storage_catalog)
         if catalog_keys != controller.profile.allowed_keys:
@@ -54,6 +55,7 @@ class ExpertMemoryManager:
         self.storage_catalog = storage_catalog
         self.allocator = allocator
         self.backend = backend
+        self.transition_barrier = transition_barrier
         for storage in storage_catalog:
             for region in self._regions(storage.key):
                 try:
@@ -93,6 +95,8 @@ class ExpertMemoryManager:
             (gate_up, down),
             TemporaryKVRegionState.INACTIVE,
         )
+        if self.transition_barrier is not None:
+            self.transition_barrier()
         self.controller.begin_eviction(key)
         # Switch subsequent execution immediately. Storage reuse is a separate
         # operation: the caller must order its first KV write after old readers.
@@ -124,6 +128,8 @@ class ExpertMemoryManager:
             (gate_up, down),
             TemporaryKVRegionState.ACTIVE,
         )
+        if self.transition_barrier is not None:
+            self.transition_barrier()
         gate_up.reclaim()
         down.reclaim()
         self.controller.begin_restoring(key)
