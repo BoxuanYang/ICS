@@ -198,6 +198,22 @@ python3 -m sglang.launch_server --model "Qwen/Qwen3-32B" --tp 4 \
     --disable-radix --port 1919 --decode-attention flashinfer
 ```
 
+### Build KTransformers
+```bash
+
+git submodule update --init --recursive third_party/ktransformers
+
+cd third_party/ktransformers
+
+conda install -n kt-kernel -c conda-forge -y \
+  libhwloc numactl pkg-config cmake ninja
+
+CPUINFER_LLAMA_BUILD_COPY=ON \
+CPUINFER_PIP_NO_DEPS=1 \
+bash install.sh kt-kernel
+```
+
+
 > **Note**: If you encounter network issues when downloading models from HuggingFace, try using `--model-source modelscope` to download from ModelScope instead:
 > ```bash
 > python -m minisgl --model "Qwen/Qwen3-32B" --tp 4 --model-source modelscope

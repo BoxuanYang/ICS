@@ -1,7 +1,7 @@
 CUDA_VISIBLE_DEVICES=2 python -m minisgl \
   --model-path /data/models/Qwen3-30B-A3B \
   --host 0.0.0.0 \
-  --port 1919 \
+  --port 30000 \
   --dtype bfloat16 \
   --tp-size 1 \
   --attention-backend fi \
@@ -11,7 +11,7 @@ CUDA_VISIBLE_DEVICES=2 python -m minisgl \
   
   
 
-curl http://127.0.0.1:1919/v1/chat/completions   -H 'Content-Type: application/json'   -d '{
+curl http://127.0.0.1:30000/v1/chat/completions   -H 'Content-Type: application/json'   -d '{
     "model": "/data/models/Qwen3-30B-A3B",
     "messages": [
       {
@@ -24,3 +24,19 @@ curl http://127.0.0.1:1919/v1/chat/completions   -H 'Content-Type: application/j
     "max_tokens": 4096,
     "stream": false
   }'
+
+
+运行 KT：
+CUDA_VISIBLE_DEVICES=5 python -m sglang.launch_server \
+  --host 0.0.0.0 \
+  --port 30000 \
+  --model /data/models/Qwen3-30B-A3B \
+  --cuda-graph-max-bs 4 \
+  --kt-method LLAMAFILE \
+  --kt-weight-path /data/models/Qwen3-30B-A3B-GGUF \
+  --kt-cpuinfer 64 \
+  --kt-threadpool-count 2 \
+  --kt-num-gpu-experts 0 \
+  --kt-max-deferred-experts-per-token 0
+
+
