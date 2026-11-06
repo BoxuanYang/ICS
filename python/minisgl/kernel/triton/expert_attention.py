@@ -41,6 +41,74 @@ def store_kv(k, v, slots, addresses, width):
 
 
 @triton.jit
+def _decode_attention(
+    Q,
+    O,
+    Table,
+    KP,
+    VP,
+    SeqLens,
+    QS: tl.constexpr,
+    QH: tl.constexpr,
+    OS: tl.constexpr,
+    TS: tl.constexpr,
+    HEADS: tl.constexpr,
+    KV_HEADS: tl.constexpr,
+    D: tl.constexpr,
+    SCALE: tl.constexpr,
+    BN: tl.constexpr,
+):
+    request = tl.program_id(0)
+    head = tl.program_id(1)
+    kv_head = head // (HEADS // KV_HEADS)
+    dims = tl.arange(0, D)
+    q = tl.load(Q + request * QS + head * QH + dims).to(tl.float32)
+    klen = tl.load(SeqLens + request)
+    maximum = -float("inf")
+    denominator = 0.0
+    accumulator = tl.zeros((D,), tl.float32)
+    for block in range(0, tl.cdiv(klen, BN)):
+        columns = block * BN + tl.arange(0, BN)
+        valid = columns < klen
+        slots = tl.load(Table + request * TS + columns, valid, 0)
+        kp = tl.load(KP + slots).to(tl.pointer_type(tl.bfloat16))
+        vp = tl.load(VP + slots).to(tl.pointer_type(tl.bfloat16))
+        k = tl.load(kp[None, :] + kv_head * D + dims[:, None], valid[None, :], 0.0)
+        v = tl.load(vp[:, None] + kv_head * D + dims[None, :], valid[:, None], 0.0)
+        score = tl.sum(q[:, None] * k, axis=0) * SCALE
+        score = tl.where(valid, score, -float("inf"))
+        new_max = tl.maximum(maximum, tl.max(score, axis=0))
+        probability = tl.exp(score - new_max)
+        correction = tl.exp(maximum - new_max)
+        accumulator = accumulator * correction + tl.sum(probability[:, None] * v, axis=0)
+        denominator = denominator * correction + tl.sum(probability, axis=0)
+        maximum = new_max
+    tl.store(O + request * OS + head * D + dims, accumulator / denominator)
+
+
+def decode_attention(q, output, table, addresses, seq_lens, kv_heads):
+    """CUDA-graph-safe batched decode over the fixed expert KV address table."""
+    _, heads, dim = q.shape
+    _decode_attention[(q.shape[0], heads)](
+        q,
+        output,
+        table,
+        addresses[0],
+        addresses[1],
+        seq_lens,
+        q.stride(0),
+        q.stride(1),
+        output.stride(0),
+        table.stride(0),
+        heads,
+        kv_heads,
+        dim,
+        dim**-0.5,
+        32,
+    )
+
+
+@triton.jit
 def _attention(
     Q,
     O,

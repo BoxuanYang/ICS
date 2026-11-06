@@ -18,7 +18,7 @@
 
 请求 page table 存全局 slot ID，地址表把它映射到每层 K/V 的实际 GPU 指针。一个 unit 包含一个 token 在全部层的 K/V；同一请求的不同 page 可以来自固定 pool 或任意专家的 buffer，无需连续。
 
-此模式关闭 CUDA graph 和跨 batch overlap，在已完成的 batch 之间改变内存所有权；单次 MoE 内仍通过 KT 的 stream callback 重叠 CPU/GPU 计算。恢复不等全局压力下降，也不排序：某个专家两段 buffer 的最后一个 KV 引用释放即恢复。Radix 缓存保留的引用仍计为 live；demo 使用 naive cache，使请求结束即可观察恢复。
+此模式支持 decode CUDA graph，但仍关闭跨 batch overlap，在已完成的 batch 之间改变内存所有权。graph 始终捕获 KT 的混合 CPU/GPU 路径，并在 replay 时读取固定地址的 CPU/GPU expert mask；pointer-table attention 使用固定地址的 page-table、seq-len capture buffer，因此驱逐和恢复不需要重新 capture。单次 MoE 内仍通过 KT 的 stream callback 重叠 CPU/GPU 计算。恢复不等全局压力下降，也不排序：某个专家两段 buffer 的最后一个 KV 引用释放即恢复。Radix 缓存保留的引用仍计为 live；demo 使用 naive cache，使请求结束即可观察恢复。
 
 KT 的 CPU 内部权重可能经过重排，因此另存候选专家的原始 BF16 CPU 副本用于逐字节恢复。启动仍要求显存能容纳整个 BF16 模型；本功能扩展的是运行中的 KV 容量。
 

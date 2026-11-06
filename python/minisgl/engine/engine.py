@@ -52,6 +52,7 @@ class Engine:
         self.model.load_state_dict(self._load_weight_state_dict(config))
 
         self.expert_memory = None
+        self.kt_backend = None
         if config.expert_profile:
             from minisgl.moe import ExpertEvictionProfile, ExpertStorageCatalog
             from minisgl.moe.kt import KTExperts
@@ -69,6 +70,7 @@ class Engine:
             )
             for layer in layers:
                 layer._kt_backend = kt
+            self.kt_backend = kt
 
         # ======================= KV cache initialization ========================
         self.num_pages = self._determine_num_pages(init_free_memory, config)
@@ -146,6 +148,9 @@ class Engine:
             max_seq_len=aligned_max_seq_len,
             vocab_size=config.model_config.vocab_size,
             dummy_req=self.dummy_req,
+            capture_batch_sizes_hook=(
+                self.kt_backend.set_capture_batch_sizes if self.kt_backend is not None else None
+            ),
         )
 
     def _init_communication(self, config: EngineConfig) -> torch.distributed.ProcessGroup:
@@ -265,11 +270,9 @@ def _adjust_config(config: EngineConfig):
             raise ValueError("Expert memory sharing requires a real Qwen3 MoE checkpoint")
         if config.page_size != 1 or config.kt_cpu_threads < 1:
             raise ValueError("Expert memory sharing requires page_size=1 and positive KT threads")
-        override("cuda_graph_bs", [])
-        override("cuda_graph_max_bs", 0)
         override("attention_backend", "expert")
         logger.info_rank0(
-            "KV-MoE enabled: pointer-table attention, CUDA graphs/overlap scheduling off"
+            "KV-MoE enabled: pointer-table attention with CUDA graph decode; overlap scheduling off"
         )
 
     if config.attention_backend == "auto":

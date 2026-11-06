@@ -75,6 +75,8 @@ def test_two_request_waves(tmp_path):
         "4",
         "--max-prefill-length",
         "32",
+        "--cuda-graph-max-bs",
+        "4",
         "--max-seq-len-override",
         "128",
         "--host",
@@ -116,6 +118,7 @@ def test_two_request_waves(tmp_path):
             assert all(replies)
             assert len(set(replies)) == 1  # Same greedy result after restore and re-eviction.
             logs = log_path.read_text()
+            assert "Start capturing CUDA graphs" in logs, logs
             assert logs.count("KV-MoE evict") >= 2, logs
             assert logs.count("KV-MoE restore") >= 2, logs
         finally:

@@ -46,6 +46,13 @@ class KTExperts:
             self.wrappers[layer.layer_id] = wrapper
             self.gpu_masks[layer.layer_id] = wrapper.gpu_experts_mask.to(layer.gate_up_proj.device)
 
+    @staticmethod
+    def set_capture_batch_sizes(batch_sizes) -> None:
+        """Keep KT's pinned CPU/GPU buffers stable across CUDA graph replay."""
+        from kt_kernel import KTMoEWrapper
+
+        KTMoEWrapper.set_capture_batch_sizes(list(batch_sizes))
+
     def route_to_cpu(self, key) -> None:
         layer, expert = key
         self.wrappers[layer].gpu_experts_mask[expert] = False
@@ -70,13 +77,24 @@ class KTExperts:
     def forward(self, layer_id: int, **kwargs) -> torch.Tensor:
         x = kwargs["hidden_states"]
         weights, ids = fused_topk(x, kwargs["gating_output"], kwargs["topk"], kwargs["renormalize"])
-        if not self.offloaded[layer_id]:
+        # Prefill and uncaptured decode can keep the cheap all-GPU fast path.
+        # Graph capture must record the hybrid topology even when every mask bit
+        # is initially true, because later replays may flip experts to CPU.
+        from minisgl.core import get_global_ctx
+
+        try:
+            metadata = getattr(get_global_ctx().batch, "attn_metadata", None)
+        except AssertionError:  # Direct backend/kernel tests do not install an engine context.
+            metadata = None
+        graph_capture = bool(getattr(metadata, "graph_mode", False))
+        if not graph_capture and not self.offloaded[layer_id]:
             return fused_experts_impl(x, kwargs["w1"], kwargs["w2"], weights, ids)
 
         wrapper = self.wrappers[layer_id]
         stream = torch.cuda.current_stream(x.device).cuda_stream
-        # KT copies inputs then submits CPU work through the CUDA stream callback.
-        # GPU work queued next overlaps that CPU work. Both use the original top-k weights.
+        # Always submit the hybrid path so CUDA graph capture has one stable topology.
+        # KT reads its pinned CPU mask at replay time; the GPU kernel reads the
+        # same residency state from the fixed-address CUDA mask below.
         wrapper.submit_forward(x, ids, weights, stream)
         gpu_ids = ids.masked_fill(~self.gpu_masks[layer_id][ids.long()], -1)
         gpu_output = fused_experts_impl(

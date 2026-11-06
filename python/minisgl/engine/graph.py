@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gc
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Callable, Dict, List
 
 import torch
 from minisgl.core import Batch, Req, get_global_ctx
@@ -88,6 +88,7 @@ class GraphRunner:
         max_seq_len: int,
         vocab_size: int,
         dummy_req: Req,
+        capture_batch_sizes_hook: Callable[[List[int]], None] | None = None,
     ) -> None:
         cuda_graph_bs = _determine_cuda_graph_bs(
             cuda_graph_bs=cuda_graph_bs,
@@ -100,6 +101,8 @@ class GraphRunner:
         self.dummy_req = dummy_req
         self.stream = stream
         self.device = device
+        if capture_batch_sizes_hook is not None and self.graph_bs_list:
+            capture_batch_sizes_hook(self.graph_bs_list)
         self._capture_graphs(max_seq_len, vocab_size, model)
 
     def _capture_graphs(self, max_seq_len: int, vocab_size: int, model: BaseLLMModel):

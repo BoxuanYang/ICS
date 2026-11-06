@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA requ
 @pytest.mark.parametrize("prefix,qlen", [(0, 19), (7, 1), (5, 17)])
 def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monkeypatch):
     import minisgl.distributed.info as info
-    from minisgl.kernel.triton.expert_attention import paged_attention
+    from minisgl.kernel.triton.expert_attention import decode_attention, paged_attention
 
     monkeypatch.setattr(info, "_TP_INFO", None)
     set_tp_info(rank=0, size=1)
@@ -70,6 +70,17 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
         probs = scores.masked_fill(~causal, -float("inf")).softmax(-1)
         expected = torch.einsum("hqk,khd->qhd", probs, v.repeat_interleave(2, 1).float())
         torch.testing.assert_close(actual.float(), expected, atol=0.025, rtol=0.025)
+        if qlen == 1:
+            graph_actual = torch.empty_like(q)
+            decode_attention(
+                q,
+                graph_actual,
+                slots.unsqueeze(0),
+                pool.addresses[:, layer],
+                torch.tensor([length], dtype=torch.int32, device=device),
+                2,
+            )
+            torch.testing.assert_close(graph_actual.float(), expected, atol=0.025, rtol=0.025)
     assert pool.region_views[0].data_ptr() == gate.data_ptr()
     assert not torch.equal(gate, original[0])
     assert torch.equal(gate[-11:], original[0][-11:])  # Tail bytes never allocated.
