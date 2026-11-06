@@ -71,6 +71,11 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         default=None,
         help="Enable single-GPU BF16 Qwen3 MoE memory sharing using this candidate file.",
     )
+    parser.add_argument(
+        "--kt-gguf-path",
+        default=None,
+        help="GGUF file or directory used by KT for CPU experts. GPU weights still use --model-path.",
+    )
     parser.add_argument("--kt-cpu-threads", type=int, default=ServerArgs.kt_cpu_threads)
 
     parser.add_argument(
@@ -241,6 +246,8 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
 
     if kwargs["model_path"].startswith("~"):
         kwargs["model_path"] = os.path.expanduser(kwargs["model_path"])
+    if kwargs["kt_gguf_path"] and kwargs["kt_gguf_path"].startswith("~"):
+        kwargs["kt_gguf_path"] = os.path.expanduser(kwargs["kt_gguf_path"])
 
     if kwargs["model_source"] == "modelscope":
         model_path = kwargs["model_path"]

@@ -11,7 +11,7 @@
 | `moe/memory.py` | 驱逐时先切 CPU 路由，再开放 buffer；两个 region 的 live KV 都归零时立即 fetch-back 完整权重，随后恢复 GPU 路由。 |
 | `moe/kt.py`、GPU MoE kernel | 启动时用 KT 加载全部 CPU 专家；原地更新 KT expert mask；GPU 跳过 CPU 专家，CPU/GPU 并行计算后相加。Router 和 routing weight 保持原逻辑。 |
 | `kvcache/expert_pool.py`、`attention/expert.py`、`kernel/triton/expert_attention.py` | 专家 storage 直接存放 KV；Triton attention 通过真实地址表读写，无临时 KV 到固定 pool 的复制。 |
-| Engine、Scheduler、CLI | 接通分配、请求结束释放、prefix-cache 生命周期和 eager restoration；增加 `--expert-profile`、`--kt-cpu-threads`。 |
+| Engine、Scheduler、CLI | 接通分配、请求结束释放、prefix-cache 生命周期和 eager restoration；增加 `--expert-profile`、`--kt-gguf-path`、`--kt-cpu-threads`。GPU 主模型与 KT CPU GGUF 使用独立路径。 |
 | `third_party/ktransformers` | 恢复递归子模块，保留主仓库固定的 `a02efe36b5802e7ca79a6b29146e01cf3b97d305`。 |
 
 ## 地址和执行顺序
@@ -37,7 +37,7 @@ git pull --recurse-submodules
 启动和发送两轮并发请求：
 
 ```bash
-bash scripts/demo_kv_moe.sh /path/to/Qwen3-30B-A3B
+bash scripts/demo_kv_moe.sh /path/to/Qwen3-30B-A3B /path/to/Qwen3-30B-A3B-GGUF
 # 另一终端：
 python scripts/check_kv_moe.py
 ```

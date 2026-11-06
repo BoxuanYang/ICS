@@ -21,6 +21,7 @@ class EngineConfig:
     attention_backend: str = "auto"
     moe_backend: str = "auto"
     expert_profile: str | None = None
+    kt_gguf_path: str | None = None
     kt_cpu_threads: int = 32
     cuda_graph_bs: List[int] | None = None
     cuda_graph_max_bs: int | None = None

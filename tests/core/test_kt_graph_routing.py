@@ -1,4 +1,5 @@
-from types import SimpleNamespace
+import sys
+from types import ModuleType, SimpleNamespace
 
 import torch
 from minisgl.core import Context
@@ -14,6 +15,41 @@ class _Wrapper:
 
     def sync_forward(self, hidden_states, stream):
         return torch.zeros_like(hidden_states)
+
+
+def test_gguf_method_and_path_are_forwarded_to_kt(monkeypatch) -> None:
+    calls = []
+
+    class Wrapper:
+        def __init__(self, **kwargs) -> None:
+            calls.append(kwargs)
+            self.gpu_experts_mask = torch.zeros(kwargs["num_experts"], dtype=torch.bool)
+
+        def load_weights(self, expert_map) -> None:
+            self.expert_map = expert_map
+
+    kt_kernel = ModuleType("kt_kernel")
+    kt_kernel.KTMoEWrapper = Wrapper
+    monkeypatch.setitem(sys.modules, "kt_kernel", kt_kernel)
+    layer = SimpleNamespace(
+        layer_id=0,
+        num_experts=2,
+        top_k=1,
+        hidden_size=4,
+        intermediate_size=8,
+        gate_up_proj=torch.empty((2, 16, 4)),
+    )
+    catalog = [
+        SimpleNamespace(key=(0, 0), gate_up_tensor=torch.empty(1), down_tensor=torch.empty(1))
+    ]
+
+    backend = KTExperts(
+        [layer], "/models/qwen.gguf", threads=4, max_tokens=32, catalog=catalog, method="LLAMAFILE"
+    )
+
+    assert calls[0]["weight_path"] == "/models/qwen.gguf"
+    assert calls[0]["method"] == "LLAMAFILE"
+    assert backend.wrappers[0].gpu_experts_mask.tolist() == [True, True]
 
 
 def test_graph_selects_pure_gpu_or_hybrid_topology(monkeypatch) -> None:

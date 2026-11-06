@@ -11,7 +11,15 @@ logger = init_logger(__name__)
 
 
 class KTExperts:
-    def __init__(self, layers, model_path: str, threads: int, max_tokens: int, catalog):
+    def __init__(
+        self,
+        layers,
+        model_path: str,
+        threads: int,
+        max_tokens: int,
+        catalog,
+        method: str = "BF16",
+    ):
         from kt_kernel import KTMoEWrapper
 
         self.layers = {layer.layer_id: layer for layer in layers}
@@ -36,7 +44,7 @@ class KTExperts:
                 threadpool_count=1,
                 weight_path=model_path,
                 chunked_prefill_size=max_tokens,
-                method="BF16",
+                method=method,
                 max_deferred_experts_per_token=0,
             )
             expert_map = torch.arange(layer.num_experts, dtype=torch.int64, device="cpu")

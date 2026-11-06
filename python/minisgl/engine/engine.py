@@ -56,17 +56,28 @@ class Engine:
         if config.expert_profile:
             from minisgl.moe import ExpertEvictionProfile, ExpertStorageCatalog
             from minisgl.moe.kt import KTExperts
-            from minisgl.utils import download_hf_weight
 
             layers = [layer.mlp.experts for layer in self.model.model.layers.op_list]
             profile = ExpertEvictionProfile.from_file(config.expert_profile)
             catalog = ExpertStorageCatalog.from_layers(layers, profile)
+            if config.kt_gguf_path:
+                kt_weight_path = config.kt_gguf_path
+                kt_method = "LLAMAFILE"
+            else:
+                from minisgl.utils import download_hf_weight
+
+                kt_weight_path = download_hf_weight(config.model_path)
+                kt_method = "BF16"
+            logger.info_rank0(
+                "KT CPU expert weights: method=%s, path=%s", kt_method, kt_weight_path
+            )
             kt = KTExperts(
                 layers,
-                download_hf_weight(config.model_path),
+                kt_weight_path,
                 config.kt_cpu_threads,
                 max(config.max_forward_len, config.max_running_req),
                 catalog,
+                method=kt_method,
             )
             for layer in layers:
                 layer._kt_backend = kt
@@ -276,6 +287,9 @@ def _align_up_32(num: int) -> int:
 def _adjust_config(config: EngineConfig):
     def override(attr: str, value: Any):  # this is dangerous, use with caution
         object.__setattr__(config, attr, value)
+
+    if config.kt_gguf_path and not config.expert_profile:
+        raise ValueError("--kt-gguf-path requires --expert-profile")
 
     if config.expert_profile:
         if config.tp_info.size != 1 or config.dtype != torch.bfloat16:

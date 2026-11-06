@@ -87,9 +87,12 @@ Restoration is eager: once both regions belonging to an offloaded expert have
 released their final KV references, restore that expert immediately, regardless
 of global pressure or profile order. Prefix-cache references count as live KV.
 
-Enable the implementation with `--expert-profile coldest_experts.txt`. This selects
+Enable the implementation with `--expert-profile coldest_experts.txt`. Pass a GGUF
+file or directory to `--kt-gguf-path`; this is used only for KT CPU experts, while
+`--model-path` remains the Hugging Face checkpoint used for GPU weights. This selects
 pointer-table attention, decode CUDA graphs, overlap scheduling, and KT's BF16 CPU
-backend (AMX when supported, otherwise KT's AVX2 backend). Decode captures both a
+backend when no GGUF path is supplied, or the Llamafile GGUF backend when it is.
+Decode captures both a
 pure-GPU graph and a hybrid graph: the fast graph has no KT host callbacks, while
 the hybrid graph reads fixed-address CPU/GPU expert masks at replay time. Expert
 eviction and restoration therefore do not require graph recapture. Residency
@@ -102,7 +105,8 @@ Set `--cuda-graph-max-bs` at least as high as the decode batch sizes being bench
 For example, `--max-running-requests 256 --cuda-graph-max-bs 8` runs batches above 8
 eagerly and is not a valid graph-on versus graph-off throughput comparison.
 
-For the short end-to-end demo, run `bash scripts/demo_kv_moe.sh /path/to/Qwen3-30B-A3B`,
+For the short end-to-end demo, run
+`bash scripts/demo_kv_moe.sh /path/to/Qwen3-30B-A3B /path/to/Qwen3-30B-A3B-GGUF`,
 then `python scripts/check_kv_moe.py` in another terminal. The small persistent
 pool forces expert eviction; `--cache-type naive` lets completed requests release
 all KV so eager restoration is visible. Radix prefix caching is also supported,
