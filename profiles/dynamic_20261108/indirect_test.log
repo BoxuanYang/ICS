@@ -1,0 +1,8 @@
+building module
+2026-11-08 17:10:30,051 - INFO - core.py:635 - flashinfer.jit: Building JIT module batch_prefill_with_kv_cache_dtype_q_bf16_dtype_kv_bf16_dtype_o_bf16_dtype_idx_i32_head_dim_qk_128_head_dim_vo_128_posenc_0_use_swa_False_use_logits_cap_False_f16qk_False_kv_stride_equal_minisgl_indirect_9e4054fd3616; this can take several minutes on first use.
+2026-11-08 17:11:00,031 - INFO - core.py:635 - flashinfer.jit: Building JIT module batch_prefill_with_kv_cache_dtype_q_bf16_dtype_kv_bf16_dtype_o_bf16_dtype_idx_i32_head_dim_qk_128_head_dim_vo_128_posenc_0_use_swa_False_use_logits_cap_False_f16qk_False_paged_kv_stride_independent_minisgl_indirect_9e4054fd3616; this can take several minutes on first use.
+PASS 1 1 93 indirect_ms 0.010642880201339721
+PASS 32 1 700 indirect_ms 0.06272223949432373
+PASS 4 19 1300 indirect_ms 0.03874272108078003
+PASS 96 1 150 indirect_ms 0.05143072128295898
+ALL PASS

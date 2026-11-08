@@ -1,0 +1,103 @@
+FFF..                                                                    [100%]
+=================================== FAILURES ===================================
+________ test_attention_reads_expert_storage_and_restores_weights[0-19] ________
+tests/kernel/test_expert_kv.py:65: in test_attention_reads_expert_storage_and_restores_weights
+    gathered_k, gathered_v = gather_kv(slots, pool.addresses[:, layer], 2, 64)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/minisgl/kernel/triton/expert_attention.py:61: in gather_kv
+    _gather_kv[(slots.numel(),)](k, v, slots, addresses[0], addresses[1], width,
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/jit.py:419: in <lambda>
+    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/jit.py:756: in run
+    launch_metadata = kernel.launch_metadata(grid, stream, *bound_args.values())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/compiler/compiler.py:490: in launch_metadata
+    self._init_handles()
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/compiler/compiler.py:460: in _init_handles
+    self._run = driver.active.launcher_cls(self.src, self.metadata)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/driver.py:682: in __init__
+    mod = compile_module_from_src(
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/build.py:89: in compile_module_from_src
+    so = _build(name, src_path, tmpdir, library_dirs or [], include_dirs or [], libraries or [], ccflags or [])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/build.py:51: in _build
+    subprocess.check_call(cc_cmd, stdout=subprocess.DEVNULL)
+../miniconda3/envs/minisgl/lib/python3.11/subprocess.py:413: in check_call
+    raise CalledProcessError(retcode, cmd)
+E   subprocess.CalledProcessError: Command '['/usr/bin/gcc', '/tmp/tmp_5npx8vq/__triton_launcher.c', '-O3', '-shared', '-fPIC', '-Wno-psabi', '-o', '/tmp/tmp_5npx8vq/__triton_launcher.cpython-311-x86_64-linux-gnu.so', '-lcuda', '-L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/lib', '-L/lib/x86_64-linux-gnu', '-L/lib/i386-linux-gnu', '-I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/include', '-I/tmp/tmp_5npx8vq', '-I/home/boxuan/miniconda3/envs/minisgl/include/python3.11']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/usr/bin/ld: skipping incompatible /lib/i386-linux-gnu/libcuda.so when searching for -lcuda
+/usr/bin/ld: cannot find -lcuda: No such file or directory
+/usr/bin/ld: skipping incompatible /lib/i386-linux-gnu/libcuda.so when searching for -lcuda
+collect2: error: ld returned 1 exit status
+________ test_attention_reads_expert_storage_and_restores_weights[7-1] _________
+tests/kernel/test_expert_kv.py:65: in test_attention_reads_expert_storage_and_restores_weights
+    gathered_k, gathered_v = gather_kv(slots, pool.addresses[:, layer], 2, 64)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/minisgl/kernel/triton/expert_attention.py:61: in gather_kv
+    _gather_kv[(slots.numel(),)](k, v, slots, addresses[0], addresses[1], width,
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/jit.py:419: in <lambda>
+    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/jit.py:756: in run
+    launch_metadata = kernel.launch_metadata(grid, stream, *bound_args.values())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/compiler/compiler.py:490: in launch_metadata
+    self._init_handles()
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/compiler/compiler.py:460: in _init_handles
+    self._run = driver.active.launcher_cls(self.src, self.metadata)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/driver.py:682: in __init__
+    mod = compile_module_from_src(
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/build.py:89: in compile_module_from_src
+    so = _build(name, src_path, tmpdir, library_dirs or [], include_dirs or [], libraries or [], ccflags or [])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/build.py:51: in _build
+    subprocess.check_call(cc_cmd, stdout=subprocess.DEVNULL)
+../miniconda3/envs/minisgl/lib/python3.11/subprocess.py:413: in check_call
+    raise CalledProcessError(retcode, cmd)
+E   subprocess.CalledProcessError: Command '['/usr/bin/gcc', '/tmp/tmp5vxziiym/__triton_launcher.c', '-O3', '-shared', '-fPIC', '-Wno-psabi', '-o', '/tmp/tmp5vxziiym/__triton_launcher.cpython-311-x86_64-linux-gnu.so', '-lcuda', '-L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/lib', '-L/lib/x86_64-linux-gnu', '-L/lib/i386-linux-gnu', '-I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/include', '-I/tmp/tmp5vxziiym', '-I/home/boxuan/miniconda3/envs/minisgl/include/python3.11']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/usr/bin/ld: skipping incompatible /lib/i386-linux-gnu/libcuda.so when searching for -lcuda
+/usr/bin/ld: cannot find -lcuda: No such file or directory
+/usr/bin/ld: skipping incompatible /lib/i386-linux-gnu/libcuda.so when searching for -lcuda
+collect2: error: ld returned 1 exit status
+________ test_attention_reads_expert_storage_and_restores_weights[5-17] ________
+tests/kernel/test_expert_kv.py:65: in test_attention_reads_expert_storage_and_restores_weights
+    gathered_k, gathered_v = gather_kv(slots, pool.addresses[:, layer], 2, 64)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/minisgl/kernel/triton/expert_attention.py:61: in gather_kv
+    _gather_kv[(slots.numel(),)](k, v, slots, addresses[0], addresses[1], width,
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/jit.py:419: in <lambda>
+    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/jit.py:756: in run
+    launch_metadata = kernel.launch_metadata(grid, stream, *bound_args.values())
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/compiler/compiler.py:490: in launch_metadata
+    self._init_handles()
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/compiler/compiler.py:460: in _init_handles
+    self._run = driver.active.launcher_cls(self.src, self.metadata)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/driver.py:682: in __init__
+    mod = compile_module_from_src(
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/build.py:89: in compile_module_from_src
+    so = _build(name, src_path, tmpdir, library_dirs or [], include_dirs or [], libraries or [], ccflags or [])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/runtime/build.py:51: in _build
+    subprocess.check_call(cc_cmd, stdout=subprocess.DEVNULL)
+../miniconda3/envs/minisgl/lib/python3.11/subprocess.py:413: in check_call
+    raise CalledProcessError(retcode, cmd)
+E   subprocess.CalledProcessError: Command '['/usr/bin/gcc', '/tmp/tmphwl6n5kz/__triton_launcher.c', '-O3', '-shared', '-fPIC', '-Wno-psabi', '-o', '/tmp/tmphwl6n5kz/__triton_launcher.cpython-311-x86_64-linux-gnu.so', '-lcuda', '-L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/lib', '-L/lib/x86_64-linux-gnu', '-L/lib/i386-linux-gnu', '-I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/triton/backends/nvidia/include', '-I/tmp/tmphwl6n5kz', '-I/home/boxuan/miniconda3/envs/minisgl/include/python3.11']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+/usr/bin/ld: skipping incompatible /lib/i386-linux-gnu/libcuda.so when searching for -lcuda
+/usr/bin/ld: cannot find -lcuda: No such file or directory
+/usr/bin/ld: skipping incompatible /lib/i386-linux-gnu/libcuda.so when searching for -lcuda
+collect2: error: ld returned 1 exit status
+=========================== short test summary info ============================
+FAILED tests/kernel/test_expert_kv.py::test_attention_reads_expert_storage_and_restores_weights[0-19]
+FAILED tests/kernel/test_expert_kv.py::test_attention_reads_expert_storage_and_restores_weights[7-1]
+FAILED tests/kernel/test_expert_kv.py::test_attention_reads_expert_storage_and_restores_weights[5-17]
+3 failed, 2 passed in 6.26s

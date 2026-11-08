@@ -21,7 +21,7 @@ def test_capture_buffers_receive_dynamic_decode_metadata(monkeypatch) -> None:
     import minisgl.core as core
 
     ctx = Context(page_size=1)
-    ctx.kv_cache = SimpleNamespace(device=torch.device("cpu"))
+    ctx.kv_cache = SimpleNamespace(device=torch.device("cpu"), heads=2)
     ctx.page_table = torch.arange(32, dtype=torch.int32).view(4, 8)
     monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
 

@@ -1,0 +1,15 @@
+CUDA_VISIBLE_DEVICES=5,6 \
+python -m minisgl \
+  --model /data/models/Qwen3-30B-A3B \
+  --host 127.0.0.1 \
+  --port 1919 \
+  --tp-size 2 \
+  --dtype bfloat16 \
+  --attention-backend fi \
+  --page-size 1 \
+  --max-seq-len-override 8192 \
+  --num-pages 16384 \
+  --max-prefill-length 8192 \
+  --cuda-graph-max-bs 96 \
+  --moe-backend fused \
+  --max-running-requests 96

@@ -22,7 +22,12 @@ def _run_scheduler(args: ServerArgs, ack_queue: mp.Queue[str]) -> None:
         scheduler.sync_all_ranks()
 
         if args.tp_info.is_primary():
-            ack_queue.put("Scheduler is ready")
+            kv_capacity_tokens = scheduler.engine.num_pages * args.page_size
+            ack_queue.put(
+                "Scheduler is ready; "
+                f"KV cache capacity: {kv_capacity_tokens:,} tokens "
+                f"({scheduler.engine.num_pages:,} pages x {args.page_size} token/page)"
+            )
 
         if args.silent_output:
             logging.disable(logging.INFO)

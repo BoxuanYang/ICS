@@ -58,30 +58,34 @@ class Engine:
             from minisgl.moe.kt import KTExperts
 
             layers = [layer.mlp.experts for layer in self.model.model.layers.op_list]
-            profile = ExpertEvictionProfile.from_file(config.expert_profile)
+            profile = ExpertEvictionProfile.from_file(config.expert_profile).prefix(config.max_offload_experts_num)
             catalog = ExpertStorageCatalog.from_layers(layers, profile)
-            if config.kt_gguf_path:
-                kt_weight_path = config.kt_gguf_path
-                kt_method = "LLAMAFILE"
+            if config.kt_weight_path:
+                kt_weight_path = config.kt_weight_path
+                kt_method = config.kt_method or "LLAMAFILE"
             else:
                 from minisgl.utils import download_hf_weight
 
                 kt_weight_path = download_hf_weight(config.model_path)
-                kt_method = "BF16"
+                kt_method = config.kt_method or "BF16"
             logger.info_rank0(
                 "KT CPU expert weights: method=%s, path=%s", kt_method, kt_weight_path
             )
             kt = KTExperts(
                 layers,
                 kt_weight_path,
-                config.kt_cpu_threads,
+                config.kt_cpuinfer,
                 max(config.max_forward_len, config.max_running_req),
                 catalog,
                 method=kt_method,
+                threadpool_count=config.kt_threadpool_count,
+                max_deferred_experts_per_token=config.kt_max_deferred_experts_per_token,
+                commit_stream=self.stream,
             )
             for layer in layers:
                 layer._kt_backend = kt
             self.kt_backend = kt
+            kt.tp_cpu_group = self.tp_cpu_group
 
         # ======================= KV cache initialization ========================
         self.num_pages = self._determine_num_pages(init_free_memory, config)
@@ -91,12 +95,14 @@ class Engine:
             from minisgl.moe import ExpertMemoryManager, ExpertOffloadController
 
             self.kv_cache = ExpertKVCache(config.model_config, self.num_pages, self.device, catalog)
+            kt.kv_pool = self.kv_cache
             self.expert_memory = ExpertMemoryManager(
                 ExpertOffloadController(profile),
                 catalog,
                 self.kv_cache.allocator,
                 kt,
                 transition_barrier=self.stream.synchronize,
+                max_offloaded_experts=config.max_offload_experts_num,
             )
         else:
             self.kv_cache = create_kvcache_pool(
@@ -121,9 +127,9 @@ class Engine:
 
         # ======================= Attention & MoE backend initialization ========================
         if config.expert_profile:
-            from minisgl.attention.expert import ExpertAttention
+            from minisgl.attention.expert import IndirectExpertAttentionRouter
 
-            self.attn_backend = ExpertAttention(config.model_config)
+            self.attn_backend = IndirectExpertAttentionRouter(config.model_config, kt.has_offloaded_experts)
         else:
             self.attn_backend = create_attention_backend(
                 config.attention_backend, config.model_config
@@ -288,19 +294,19 @@ def _adjust_config(config: EngineConfig):
     def override(attr: str, value: Any):  # this is dangerous, use with caution
         object.__setattr__(config, attr, value)
 
-    if config.kt_gguf_path and not config.expert_profile:
-        raise ValueError("--kt-gguf-path requires --expert-profile")
+    if config.kt_weight_path and not config.expert_profile:
+        raise ValueError("--kt-weight-path requires --expert-profile")
 
     if config.expert_profile:
-        if config.tp_info.size != 1 or config.dtype != torch.bfloat16:
-            raise ValueError("Expert memory sharing requires TP=1 and BF16")
+        if config.dtype != torch.bfloat16:
+            raise ValueError("Expert memory sharing requires BF16")
         if config.model_config.model_type != "qwen3_moe" or config.use_dummy_weight:
             raise ValueError("Expert memory sharing requires a real Qwen3 MoE checkpoint")
-        if config.page_size != 1 or config.kt_cpu_threads < 1:
+        if config.page_size != 1 or config.kt_cpuinfer < 1:
             raise ValueError("Expert memory sharing requires page_size=1 and positive KT threads")
-        override("attention_backend", "expert")
         logger.info_rank0(
-            "KV-MoE enabled: pointer-table attention, dual CUDA graphs, and overlap scheduling"
+            "KV-MoE enabled: indirect FlashInfer, three CUDA graph variants, "
+            "and overlapped scheduling"
         )
 
     if config.attention_backend == "auto":

@@ -91,7 +91,7 @@ class CacheManager:
             assert torch.all(self.free_slots % self.page_size == 0)
 
     @contextmanager
-    def lazy_free_region(self):
+    def lazy_free_region(self, *, flush_restorations: bool = True):
         def lazy_free(indices: torch.Tensor) -> None:
             lazy_free_list.append(indices[:: self.page_size])
 

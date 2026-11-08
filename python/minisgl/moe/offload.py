@@ -78,15 +78,26 @@ class ExpertEvictionProfile:
             raise ValueError(f"Unable to parse expert profile {profile_path}: {exc}") from exc
 
         if not isinstance(raw_entries, (list, tuple)):
-            raise ValueError("Expert profile must be a list or tuple of triples")
+            raise ValueError("Expert profile must be a list or tuple")
 
         entries: list[ExpertProfileEntry] = []
         for index, raw_entry in enumerate(raw_entries):
-            if not isinstance(raw_entry, (list, tuple)) or len(raw_entry) != 3:
+            if isinstance(raw_entry, Mapping):
+                try:
+                    layer_id = raw_entry["layer_id"]
+                    expert_id = raw_entry["expert_id"]
+                    frequency = raw_entry["activation_frequency"]
+                except KeyError as exc:
+                    raise ValueError(
+                        f"Profile entry {index} is missing field {exc.args[0]!r}"
+                    ) from exc
+            elif isinstance(raw_entry, (list, tuple)) and len(raw_entry) == 3:
+                layer_id, expert_id, frequency = raw_entry
+            else:
                 raise ValueError(
-                    f"Profile entry {index} must be a (layer, expert, frequency) triple"
+                    f"Profile entry {index} must be a mapping or a "
+                    "(layer, expert, frequency) triple"
                 )
-            layer_id, expert_id, frequency = raw_entry
             if isinstance(layer_id, bool) or not isinstance(layer_id, int):
                 raise TypeError(f"Profile entry {index} has a non-integer layer_id")
             if isinstance(expert_id, bool) or not isinstance(expert_id, int):
@@ -95,6 +106,16 @@ class ExpertEvictionProfile:
                 raise TypeError(f"Profile entry {index} has a non-numeric activation frequency")
             entries.append(ExpertProfileEntry(layer_id, expert_id, float(frequency)))
         return cls(entries)
+
+    def prefix(self, count: int) -> ExpertEvictionProfile:
+        """Return the `count` coldest entries while preserving profile order."""
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise TypeError("Expert profile prefix count must be an integer")
+        if count < 1:
+            raise ValueError("Expert profile prefix count must be positive")
+        if count >= len(self._entries):
+            return self
+        return ExpertEvictionProfile(self._entries[:count])
 
     @property
     def entries(self) -> tuple[ExpertProfileEntry, ...]:

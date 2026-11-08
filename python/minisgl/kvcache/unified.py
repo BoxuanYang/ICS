@@ -246,6 +246,39 @@ class UnifiedKVAllocator:
                 break
         return tuple(allocated)
 
+    def allocate_persistent(self, count: int) -> tuple[KVBlockRef, ...]:
+        """Allocate only from the normal KV pool.
+
+        The expert-cache scheduler uses this to keep ordinary requests entirely
+        on the contiguous FlashInfer-compatible pool.  Falling through into an
+        expert region here would turn every row in a decode batch into a
+        pointer-attention row.
+        """
+        return self.persistent_region.allocate(count)
+
+    def allocate_temporary(self, count: int) -> tuple[KVBlockRef, ...]:
+        """Allocate only from active expert-backed KV regions."""
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise TypeError("Block count must be an integer")
+        if count < 0:
+            raise ValueError("Block count must be non-negative")
+        if count > self.temporary_available_blocks:
+            raise MemoryError(
+                f"Temporary KV regions have {self.temporary_available_blocks} "
+                f"free blocks, but {count} were requested"
+            )
+
+        remaining = count
+        allocated: list[KVBlockRef] = []
+        for region in self._temporary_regions.values():
+            take = min(remaining, region.free_blocks)
+            if take:
+                allocated.extend(region.allocate(take))
+                remaining -= take
+            if remaining == 0:
+                break
+        return tuple(allocated)
+
     def release(self, blocks: Iterable[KVBlockRef]) -> None:
         """Release final KV ownership, after ordering GPU accesses in the caller.
 

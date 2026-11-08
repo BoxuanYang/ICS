@@ -1,0 +1,3415 @@
+diff --git a/python/minisgl/attention/expert.py b/python/minisgl/attention/expert.py
+index f06ad00..4d0adf3 100644
+--- a/python/minisgl/attention/expert.py
++++ b/python/minisgl/attention/expert.py
+@@ -1,7 +1,7 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+-from typing import List
++from typing import Callable, List
+ 
+ import torch
+ from minisgl.core import get_global_ctx
+@@ -27,14 +27,39 @@ class ExpertMetadata(BaseAttnMetadata):
+         return self.last_indices[:bs]
+ 
+ 
++@dataclass
++class RoutedExpertMetadata(BaseAttnMetadata):
++    """Metadata for the fast contiguous path or the expert-address path."""
++
++    pure_gpu: BaseAttnMetadata | None
++    hybrid: ExpertMetadata | None
++    attention_hybrid: bool
++    moe_hybrid: bool
++    hybrid_mask: torch.Tensor | None = None
++
++    @property
++    def graph_mode(self) -> bool:
++        return bool(getattr(self.selected, "graph_mode", False))
++
++    @property
++    def selected(self) -> BaseAttnMetadata:
++        metadata = self.hybrid if self.attention_hybrid else self.pure_gpu
++        if metadata is None:
++            raise RuntimeError("Selected attention metadata was not prepared")
++        return metadata
++
++    def get_last_indices(self, bs: int) -> torch.Tensor:
++        return self.selected.get_last_indices(bs)
++
++
+ class ExpertAttention(BaseAttnBackend):
+     def __init__(self, config):
+         self.pool = get_global_ctx().kv_cache
+-        self.kv_heads = config.num_kv_heads
++        self.kv_heads = self.pool.heads
+         self.capture: ExpertCaptureData | None = None
+         self.capture_bs: List[int] = []
+ 
+-    def prepare_metadata(self, batch) -> None:
++    def prepare_metadata(self, batch, active_mask: list[bool] | None = None) -> None:
+         ends, offset = [], 0
+         for req in batch.reqs:
+             offset += req.extend_len
+@@ -47,7 +72,14 @@ class ExpertAttention(BaseAttnBackend):
+             table = get_global_ctx().page_table
+             compact_table = torch.stack([table[req.table_idx, :max_len] for req in reqs])
+             seq_lens = torch.tensor(
+-                [req.device_len for req in reqs], dtype=torch.int32, device=self.pool.device
++                [
++                    req.device_len
++                    if active_mask is None or active_mask[i]
++                    else 0
++                    for i, req in enumerate(reqs)
++                ],
++                dtype=torch.int32,
++                device=self.pool.device,
+             )
+         batch.attn_metadata = ExpertMetadata(
+             last_indices=torch.tensor(ends, dtype=torch.int32, device=self.pool.device),
+@@ -56,14 +88,16 @@ class ExpertAttention(BaseAttnBackend):
+         )
+ 
+     def forward(self, q, k, v, layer_id, batch):
++        self.pool.store_kv(k, v, batch.out_loc, layer_id)
++        return self.run_attention(q, layer_id, batch, batch.attn_metadata)
++
++    def run_attention(self, q, layer_id, batch, metadata):
++        """Run pointer-table attention after KV has already been stored."""
+         from minisgl.kernel.triton.expert_attention import decode_attention, paged_attention
+ 
+-        self.pool.store_kv(k, v, batch.out_loc, layer_id)
+         output = torch.empty(q.shape, dtype=q.dtype, device=q.device)
+-        metadata = batch.attn_metadata
+         assert isinstance(metadata, ExpertMetadata)
+-        if metadata.graph_mode:
+-            assert metadata.page_table is not None and metadata.seq_lens is not None
++        if metadata.page_table is not None and metadata.seq_lens is not None:
+             decode_attention(
+                 q,
+                 output,
+@@ -114,3 +148,239 @@ class ExpertAttention(BaseAttnBackend):
+         table_len = metadata.page_table.size(1)
+         self.capture.seq_lens[:bs].copy_(metadata.seq_lens)
+         self.capture.page_table[:bs, :table_len].copy_(metadata.page_table)
++
++
++class ExpertAttentionRouter(BaseAttnBackend):
++    """Use FlashInfer until expert storage is actually serving KV blocks.
++
++    Pointer-table attention is required after an expert is evicted, but paying
++    its cost while every KV slot is still in the contiguous persistent pool
++    makes the common path substantially slower.  The router captures both CUDA
++    graph variants and selects the matching metadata/backend for each batch.
++    """
++
++    def __init__(self, config, use_hybrid: Callable[[], bool]):
++        from .fi import FlashInferBackend
++
++        self.pure_gpu = FlashInferBackend(config)
++        self.hybrid = ExpertAttention(config)
++        self.use_hybrid = use_hybrid
++        self.capture_hybrid_mask: torch.Tensor | None = None
++
++    @staticmethod
++    def _run_with_metadata(batch, metadata, fn):
++        routed = batch.attn_metadata
++        batch.attn_metadata = metadata
++        try:
++            return fn()
++        finally:
++            batch.attn_metadata = routed
++
++    def forward(self, q, k, v, layer_id, batch):
++        metadata = batch.attn_metadata
++        assert isinstance(metadata, RoutedExpertMetadata)
++        if not metadata.attention_hybrid:
++            return self._run_with_metadata(
++                batch,
++                metadata.pure_gpu,
++                lambda: self.pure_gpu.forward(q, k, v, layer_id, batch),
++            )
++
++        if getattr(batch, "is_prefill", False) and metadata.pure_gpu is not None:
++            from minisgl.kernel.triton.expert_attention import gather_kv
++            pool = self.hybrid.pool
++            pool.store_kv(k, v, batch.out_loc, layer_id)
++            workspace = gather_kv(metadata.pure_gpu.gather_indices,
++                                  pool.addresses[:, layer_id], pool.heads, pool.head_dim)
++            return self.pure_gpu.run_attention(q, layer_id, metadata.pure_gpu, workspace)
++
++        if (
++            bool(getattr(batch, "is_prefill", False))
++            or metadata.pure_gpu is None
++            or metadata.hybrid_mask is None
++        ):
++            return self._run_with_metadata(
++                batch,
++                metadata.hybrid,
++                lambda: self.hybrid.forward(q, k, v, layer_id, batch),
++            )
++
++        # Store every row exactly once through the unified address table.  Then
++        # run FlashInfer for persistent rows and pointer attention only for rows
++        # that actually own expert-backed KV.  The latter receive seq_len=0 in
++        # the pointer kernel, so the slow indirect scan is not paid by the rest
++        # of a large decode batch.
++        self.hybrid.pool.store_kv(k, v, batch.out_loc, layer_id)
++        pure_output = self.pure_gpu.run_attention(q, layer_id, metadata.pure_gpu)
++        hybrid_output = self.hybrid.run_attention(q, layer_id, batch, metadata.hybrid)
++        return torch.where(metadata.hybrid_mask, hybrid_output, pure_output)
++
++    def prepare_metadata(self, batch) -> None:
++        attention_hybrid = bool(getattr(batch, "uses_temporary_kv", False))
++        moe_hybrid = self.use_hybrid()
++        if attention_hybrid and getattr(batch, "is_prefill", False):
++            self.hybrid.prepare_metadata(batch)
++            hybrid_metadata = batch.attn_metadata
++            self.pure_gpu.prepare_metadata(batch)
++            pure_metadata = batch.attn_metadata
++            pure_metadata.gather_indices = pure_metadata.indices
++            pure_metadata.indices = torch.arange(pure_metadata.indices.numel(),
++                                                 dtype=torch.int32,
++                                                 device=self.hybrid.pool.device)
++            hybrid_mask = None
++        elif attention_hybrid and bool(getattr(batch, "is_decode", False)):
++            active = [
++                bool(getattr(req, "uses_temporary_kv", False))
++                for req in batch.padded_reqs
++            ]
++            self.pure_gpu.prepare_metadata(batch, active_mask=[not value for value in active])
++            pure_metadata = batch.attn_metadata
++            self.hybrid.prepare_metadata(batch, active_mask=active)
++            hybrid_metadata = batch.attn_metadata
++            hybrid_mask = torch.tensor(
++                active, dtype=torch.bool, device=self.hybrid.pool.device
++            ).view(-1, 1, 1)
++        else:
++            backend = self.hybrid if attention_hybrid else self.pure_gpu
++            backend.prepare_metadata(batch)
++            prepared = batch.attn_metadata
++            pure_metadata = None if attention_hybrid else prepared
++            hybrid_metadata = prepared if attention_hybrid else None
++            hybrid_mask = None
++        batch.attn_metadata = RoutedExpertMetadata(
++            pure_gpu=pure_metadata,
++            hybrid=hybrid_metadata,
++            attention_hybrid=attention_hybrid,
++            moe_hybrid=moe_hybrid,
++            hybrid_mask=hybrid_mask,
++        )
++
++    def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:
++        self.pure_gpu.init_capture_graph(max_seq_len, bs_list)
++        self.hybrid.init_capture_graph(max_seq_len, bs_list)
++        self.capture_hybrid_mask = torch.zeros(
++            (max(bs_list), 1, 1), dtype=torch.bool, device=self.hybrid.pool.device
++        )
++
++    def prepare_for_capture(self, batch) -> None:
++        self.pure_gpu.prepare_for_capture(batch)
++        pure_gpu = batch.attn_metadata
++        self.hybrid.prepare_for_capture(batch)
++        hybrid = batch.attn_metadata
++        assert isinstance(hybrid, ExpertMetadata)
++        assert self.capture_hybrid_mask is not None
++        batch.attn_metadata = RoutedExpertMetadata(
++            pure_gpu=pure_gpu,
++            hybrid=hybrid,
++            attention_hybrid=False,
++            moe_hybrid=False,
++            hybrid_mask=self.capture_hybrid_mask[: batch.size],
++        )
++
++    def prepare_for_replay(self, batch) -> None:
++        metadata = batch.attn_metadata
++        assert isinstance(metadata, RoutedExpertMetadata)
++        if not metadata.attention_hybrid:
++            self._run_with_metadata(
++                batch,
++                metadata.pure_gpu,
++                lambda: self.pure_gpu.prepare_for_replay(batch),
++            )
++            return
++
++        if (
++            bool(getattr(batch, "is_decode", False))
++            and metadata.pure_gpu is not None
++            and metadata.hybrid_mask is not None
++        ):
++            assert self.capture_hybrid_mask is not None
++            self.capture_hybrid_mask[: batch.padded_size].copy_(metadata.hybrid_mask)
++            self._run_with_metadata(
++                batch,
++                metadata.pure_gpu,
++                lambda: self.pure_gpu.prepare_for_replay(batch),
++            )
++            self._run_with_metadata(
++                batch,
++                metadata.hybrid,
++                lambda: self.hybrid.prepare_for_replay(batch),
++            )
++            return
++
++
++        self._run_with_metadata(
++            batch,
++            metadata.hybrid,
++            lambda: self.hybrid.prepare_for_replay(batch),
++        )
++
++
++class DenseExpertAttentionRouter(ExpertAttentionRouter):
++    """FlashInfer over persistent KV or a reusable per-layer gather workspace."""
++
++    def forward(self, q, k, v, layer_id, batch):
++        metadata = batch.attn_metadata
++        if not metadata.attention_hybrid:
++            return self._run_with_metadata(
++                batch, metadata.pure_gpu,
++                lambda: self.pure_gpu.forward(q, k, v, layer_id, batch))
++        pool = self.hybrid.pool
++        pool.store_kv(k, v, batch.out_loc, layer_id)
++        workspace = pool.gather_attention_workspace(layer_id)
++        return self.pure_gpu.run_attention(q, layer_id, metadata.pure_gpu, workspace)
++
++    def prepare_metadata(self, batch):
++        self.pure_gpu.prepare_metadata(batch)
++        metadata = batch.attn_metadata
++        batch.attn_metadata = RoutedExpertMetadata(
++            pure_gpu=metadata, hybrid=metadata,
++            attention_hybrid=bool(getattr(batch, "uses_temporary_kv", False)),
++            moe_hybrid=self.use_hybrid())
++
++    def init_capture_graph(self, max_seq_len, bs_list):
++        self.pure_gpu.init_capture_graph(max_seq_len, bs_list)
++
++    def prepare_for_capture(self, batch):
++        self.pure_gpu.prepare_for_capture(batch)
++        metadata = batch.attn_metadata
++        batch.attn_metadata = RoutedExpertMetadata(
++            pure_gpu=metadata, hybrid=metadata,
++            attention_hybrid=False, moe_hybrid=False)
++
++    def prepare_for_replay(self, batch):
++        self._run_with_metadata(
++            batch, batch.attn_metadata.pure_gpu,
++            lambda: self.pure_gpu.prepare_for_replay(batch))
++
++
++class IndirectExpertAttentionRouter(DenseExpertAttentionRouter):
++    """Read live KV through its address table, without copying KV or weights."""
++
++    def __init__(self, config, use_hybrid):
++        super().__init__(config, use_hybrid)
++        from .indirect_fi import (
++            IndirectFlashInferUnavailable, get_indirect_module, make_pointer_views)
++        pool = self.hybrid.pool
++        try:
++            self.indirect_module = get_indirect_module(pool.head_dim)
++        except IndirectFlashInferUnavailable as exc:
++            from minisgl.utils import init_logger
++            init_logger(__name__).warning("Using dense KV compatibility path: %s", exc)
++            self.indirect_module = None
++        if self.indirect_module is not None:
++            self.pointer_tables, self.pointer_views = make_pointer_views(
++                pool.addresses, pool.heads, pool.head_dim)
++
++    def forward(self, q, k, v, layer_id, batch):
++        metadata = batch.attn_metadata
++        if not metadata.attention_hybrid:
++            return self._run_with_metadata(
++                batch, metadata.pure_gpu,
++                lambda: self.pure_gpu.forward(q, k, v, layer_id, batch))
++        # Non-tensor-core decode uses a different FlashInfer kernel family.
++        if self.indirect_module is None or (batch.is_decode and not self.pure_gpu.use_tensor_cores):
++            return super().forward(q, k, v, layer_id, batch)
++        self.hybrid.pool.store_kv(k, v, batch.out_loc, layer_id)
++        return self.pure_gpu.run_attention(
++            q, layer_id, metadata.pure_gpu, self.pointer_views[layer_id],
++            module=self.indirect_module)
+diff --git a/python/minisgl/attention/fi.py b/python/minisgl/attention/fi.py
+index f390137..997bbe2 100644
+--- a/python/minisgl/attention/fi.py
++++ b/python/minisgl/attention/fi.py
+@@ -176,24 +176,63 @@ class FlashInferBackend(BaseAttnBackend):
+     def forward(
+         self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
+     ) -> torch.Tensor:
++        # This backend receives only persistent output locations. Preserve the
++        # original contiguous store kernel even when the pool supports experts.
++        from minisgl.kvcache.mha_pool import MHAKVCache
++        MHAKVCache.store_kv(self.kvcache, k, v, batch.out_loc, layer_id)
++        return self.run_attention(q, layer_id, batch.attn_metadata)
++
++    def run_attention(
++        self, q: torch.Tensor, layer_id: int, metadata: FIMetadata, kv_cache=None, module=None
++    ) -> torch.Tensor:
++        """Run attention without storing KV.
++
++        The expert router stores KV once through its address table, then uses
++        this entry point for the persistent-only rows of a mixed batch.
++        """
+         def _flatten_cache(cache: torch.Tensor) -> torch.Tensor:  # treat page = 1
++            if cache.ndim == 4 and cache.shape[1] == 1:
++                return cache
+             return cache.view(-1, 1, cache.shape[2], cache.shape[3])
+ 
+-        metadata = batch.attn_metadata
+         assert isinstance(metadata, FIMetadata)
+         self._initialize_metadata_once(metadata)
+-        self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
+-        kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
++        if kv_cache is None:
++            kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
+         kv_cache = (_flatten_cache(kv_cache[0]), _flatten_cache(kv_cache[1]))
+-        return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
+-
+-    def prepare_metadata(self, batch: Batch) -> None:
++        if module is None:
++            return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
++        original = metadata.wrapper._cached_module
++        metadata.wrapper._cached_module = module
++        try:
++            return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
++        finally:
++            metadata.wrapper._cached_module = original
++
++    def prepare_metadata(
++        self, batch: Batch, active_mask: list[bool] | None = None
++    ) -> None:
+         reqs = batch.padded_reqs
++        if active_mask is not None and len(active_mask) != len(reqs):
++            raise ValueError("FlashInfer active mask must match padded batch size")
+ 
+         padded_size = len(reqs)
+-        seqlens_q = [req.extend_len for req in reqs]
+-        seqlens_k = [req.device_len for req in reqs]
+-        cached_lens = [req.cached_len for req in reqs]
++        # In a mixed expert-KV batch FlashInfer processes only persistent rows.
++        # Inactive rows use the persistent dummy page and their output is later
++        # discarded by the router.  Keeping one page per row is accepted by the
++        # graph decode wrapper, unlike a zero-length decode row.
++        seqlens_q = [
++            req.extend_len if active_mask is None or active_mask[i] else 1
++            for i, req in enumerate(reqs)
++        ]
++        seqlens_k = [
++            req.device_len if active_mask is None or active_mask[i] else 1
++            for i, req in enumerate(reqs)
++        ]
++        cached_lens = [
++            req.cached_len if active_mask is None or active_mask[i] else 0
++            for i, req in enumerate(reqs)
++        ]
+         max_seqlen_q = max(seqlens_q)
+         CPU_KWARGS = {"device": "cpu", "dtype": torch.int32, "pin_memory": True}
+ 
+@@ -208,11 +247,24 @@ class FlashInferBackend(BaseAttnBackend):
+             cu_seqlens_q_cpu = torch.tensor([0] + seqlens_q, **CPU_KWARGS).cumsum_(dim=0)
+ 
+         page_table = get_global_ctx().page_table
++        dummy_page = torch.tensor(
++            [self.kvcache.allocator.persistent_capacity_blocks],
++            dtype=torch.int32,
++            device=device,
++        ) if active_mask is not None else None
++        indices = torch.cat(
++            [
++                page_table[req.table_idx, : req.device_len]
++                if active_mask is None or active_mask[i]
++                else dummy_page
++                for i, req in enumerate(reqs)
++            ]
++        )
+         batch.attn_metadata = FIMetadata(
+             cu_seqlens_q_cpu=cu_seqlens_q_cpu,
+             cu_seqlens_k_cpu=cu_seqlens_k_cpu,
+             cu_seqlens_q_gpu=cu_seqlens_q_cpu.to(device, non_blocking=True),
+-            indices=torch.cat([page_table[req.table_idx, : req.device_len] for req in reqs]),
++            indices=indices,
+             last_page_len_cpu=self._get_ones_cpu(padded_size),
+             num_qo_heads=self.qo_head_local,
+             num_kv_heads=self.kv_head_local,
+diff --git a/python/minisgl/engine/config.py b/python/minisgl/engine/config.py
+index 36a00f8..242c632 100644
+--- a/python/minisgl/engine/config.py
++++ b/python/minisgl/engine/config.py
+@@ -21,8 +21,12 @@ class EngineConfig:
+     attention_backend: str = "auto"
+     moe_backend: str = "auto"
+     expert_profile: str | None = None
+-    kt_gguf_path: str | None = None
+-    kt_cpu_threads: int = 32
++    max_offload_experts_num: int = 24
++    kt_weight_path: str | None = None
++    kt_cpuinfer: int = 32
++    kt_threadpool_count: int = 1
++    kt_method: str | None = None
++    kt_max_deferred_experts_per_token: int = 0
+     cuda_graph_bs: List[int] | None = None
+     cuda_graph_max_bs: int | None = None
+     page_size: int = 1
+diff --git a/python/minisgl/engine/engine.py b/python/minisgl/engine/engine.py
+index 240ef25..1ebd484 100644
+--- a/python/minisgl/engine/engine.py
++++ b/python/minisgl/engine/engine.py
+@@ -58,30 +58,34 @@ class Engine:
+             from minisgl.moe.kt import KTExperts
+ 
+             layers = [layer.mlp.experts for layer in self.model.model.layers.op_list]
+-            profile = ExpertEvictionProfile.from_file(config.expert_profile)
++            profile = ExpertEvictionProfile.from_file(config.expert_profile).prefix(config.max_offload_experts_num)
+             catalog = ExpertStorageCatalog.from_layers(layers, profile)
+-            if config.kt_gguf_path:
+-                kt_weight_path = config.kt_gguf_path
+-                kt_method = "LLAMAFILE"
++            if config.kt_weight_path:
++                kt_weight_path = config.kt_weight_path
++                kt_method = config.kt_method or "LLAMAFILE"
+             else:
+                 from minisgl.utils import download_hf_weight
+ 
+                 kt_weight_path = download_hf_weight(config.model_path)
+-                kt_method = "BF16"
++                kt_method = config.kt_method or "BF16"
+             logger.info_rank0(
+                 "KT CPU expert weights: method=%s, path=%s", kt_method, kt_weight_path
+             )
+             kt = KTExperts(
+                 layers,
+                 kt_weight_path,
+-                config.kt_cpu_threads,
++                config.kt_cpuinfer,
+                 max(config.max_forward_len, config.max_running_req),
+                 catalog,
+                 method=kt_method,
++                threadpool_count=config.kt_threadpool_count,
++                max_deferred_experts_per_token=config.kt_max_deferred_experts_per_token,
++                commit_stream=self.stream,
+             )
+             for layer in layers:
+                 layer._kt_backend = kt
+             self.kt_backend = kt
++            kt.tp_cpu_group = self.tp_cpu_group
+ 
+         # ======================= KV cache initialization ========================
+         self.num_pages = self._determine_num_pages(init_free_memory, config)
+@@ -91,12 +95,14 @@ class Engine:
+             from minisgl.moe import ExpertMemoryManager, ExpertOffloadController
+ 
+             self.kv_cache = ExpertKVCache(config.model_config, self.num_pages, self.device, catalog)
++            kt.kv_pool = self.kv_cache
+             self.expert_memory = ExpertMemoryManager(
+                 ExpertOffloadController(profile),
+                 catalog,
+                 self.kv_cache.allocator,
+                 kt,
+                 transition_barrier=self.stream.synchronize,
++                max_offloaded_experts=config.max_offload_experts_num,
+             )
+         else:
+             self.kv_cache = create_kvcache_pool(
+@@ -121,9 +127,9 @@ class Engine:
+ 
+         # ======================= Attention & MoE backend initialization ========================
+         if config.expert_profile:
+-            from minisgl.attention.expert import ExpertAttention
++            from minisgl.attention.expert import IndirectExpertAttentionRouter
+ 
+-            self.attn_backend = ExpertAttention(config.model_config)
++            self.attn_backend = IndirectExpertAttentionRouter(config.model_config, kt.has_offloaded_experts)
+         else:
+             self.attn_backend = create_attention_backend(
+                 config.attention_backend, config.model_config
+@@ -288,19 +294,19 @@ def _adjust_config(config: EngineConfig):
+     def override(attr: str, value: Any):  # this is dangerous, use with caution
+         object.__setattr__(config, attr, value)
+ 
+-    if config.kt_gguf_path and not config.expert_profile:
+-        raise ValueError("--kt-gguf-path requires --expert-profile")
++    if config.kt_weight_path and not config.expert_profile:
++        raise ValueError("--kt-weight-path requires --expert-profile")
+ 
+     if config.expert_profile:
+-        if config.tp_info.size != 1 or config.dtype != torch.bfloat16:
+-            raise ValueError("Expert memory sharing requires TP=1 and BF16")
++        if config.dtype != torch.bfloat16:
++            raise ValueError("Expert memory sharing requires BF16")
+         if config.model_config.model_type != "qwen3_moe" or config.use_dummy_weight:
+             raise ValueError("Expert memory sharing requires a real Qwen3 MoE checkpoint")
+-        if config.page_size != 1 or config.kt_cpu_threads < 1:
++        if config.page_size != 1 or config.kt_cpuinfer < 1:
+             raise ValueError("Expert memory sharing requires page_size=1 and positive KT threads")
+-        override("attention_backend", "expert")
+         logger.info_rank0(
+-            "KV-MoE enabled: pointer-table attention, dual CUDA graphs, and overlap scheduling"
++            "KV-MoE enabled: indirect FlashInfer, three CUDA graph variants, "
++            "and overlapped scheduling"
+         )
+ 
+     if config.attention_backend == "auto":
+diff --git a/python/minisgl/engine/graph.py b/python/minisgl/engine/graph.py
+index ff5f99a..dd39f11 100644
+--- a/python/minisgl/engine/graph.py
++++ b/python/minisgl/engine/graph.py
+@@ -99,35 +99,43 @@ class GraphRunner:
+         self.attn_backend = attn_backend
+         self.max_graph_bs = max(cuda_graph_bs) if cuda_graph_bs else 0
+         self.graph_bs_list = sorted(cuda_graph_bs)
++        # CPU experts should not process artificial padding requests. Capture
++        # exact sizes for the normal hybrid decode range; retain the original
++        # graph sizes and padding policy when every expert is GPU-resident.
++        self.hybrid_bs_list = sorted(set(self.graph_bs_list) | (
++            set(range(1, min(self.max_graph_bs, 96) + 1))
++            if use_hybrid_graph is not None else set()))
+         self.dummy_req = dummy_req
+         self.stream = stream
+         self.device = device
+         self.use_hybrid_graph = use_hybrid_graph
+         self._logged_replay_variants: set[str] = set()
+         if capture_batch_sizes_hook is not None and self.graph_bs_list:
+-            capture_batch_sizes_hook(self.graph_bs_list)
++            capture_batch_sizes_hook(self.hybrid_bs_list)
+         self._capture_graphs(max_seq_len, vocab_size, model)
+ 
+     def _capture_graphs(self, max_seq_len: int, vocab_size: int, model: BaseLLMModel):
+         self.graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
++        self.moe_graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
+         self.hybrid_graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
+         if self.max_graph_bs == 0:
+             return logger.info_rank0("CUDA graph is disabled.")
+ 
+-        self.attn_backend.init_capture_graph(max_seq_len=max_seq_len, bs_list=self.graph_bs_list)
++        self.attn_backend.init_capture_graph(max_seq_len=max_seq_len, bs_list=self.hybrid_bs_list)
+ 
+         torch.cuda.synchronize(self.device)
+         torch.cuda.empty_cache()
+         torch.cuda.reset_peak_memory_stats(self.device)
+ 
+-        logger.info_rank0(f"Start capturing CUDA graphs with sizes: {self.graph_bs_list}")
++        logger.info_rank0("Capturing pure GPU sizes %s and hybrid sizes %s",
++                          self.graph_bs_list, self.hybrid_bs_list)
+         free_memory = get_free_memory(self.device)
+         logger.info_rank0(f"Free GPU memory before capturing CUDA graphs: {mem_GB(free_memory)}")
+ 
+         self.buffer = GraphCaptureBuffer.init(self.max_graph_bs, vocab_size, self.device)
+ 
+         pbar = tqdm(
+-            sorted(self.graph_bs_list, reverse=True),
++            sorted(self.hybrid_bs_list, reverse=True),
+             desc="Preparing for capturing CUDA graphs...",
+             unit="batch",
+             disable=not get_tp_info().is_primary(),  # disable for non-primary ranks
+@@ -142,21 +150,29 @@ class GraphRunner:
+             self.attn_backend.prepare_for_capture(batch)
+             self.buffer.set_batch(batch)
+             with get_global_ctx().forward_batch(batch):
++                batch.attn_metadata.attention_hybrid = False
+                 batch.attn_metadata.moe_hybrid = False
+-                self.buffer.logits[:bs] = model.forward()
+-                graph = torch.cuda.CUDAGraph()
+-                with torch.cuda.graph(graph, pool=pool, stream=self.stream):
++                if bs in self.graph_bs_list:
+                     self.buffer.logits[:bs] = model.forward()
+-                if pool is None:
+-                    pool = graph.pool()  # reuse one pool; graphs never run concurrently
++                    graph = torch.cuda.CUDAGraph()
++                    with torch.cuda.graph(graph, pool=pool, stream=self.stream):
++                        self.buffer.logits[:bs] = model.forward()
++                    if pool is None:
++                        pool = graph.pool()  # graphs never run concurrently
++                    self.graph_map[bs] = graph
+                 if self.use_hybrid_graph is not None:
+                     batch.attn_metadata.moe_hybrid = True
+                     self.buffer.logits[:bs] = model.forward()
++                    moe_graph = torch.cuda.CUDAGraph()
++                    with torch.cuda.graph(moe_graph, pool=pool, stream=self.stream):
++                        self.buffer.logits[:bs] = model.forward()
++                    self.moe_graph_map[bs] = moe_graph
++                    batch.attn_metadata.attention_hybrid = True
++                    self.buffer.logits[:bs] = model.forward()
+                     hybrid_graph = torch.cuda.CUDAGraph()
+                     with torch.cuda.graph(hybrid_graph, pool=pool, stream=self.stream):
+                         self.buffer.logits[:bs] = model.forward()
+                     self.hybrid_graph_map[bs] = hybrid_graph
+-            self.graph_map[bs] = graph
+ 
+         free_memory = get_free_memory(self.device)
+         logger.info_rank0(f"Free GPU memory after capturing CUDA graphs: {mem_GB(free_memory)}")
+@@ -167,9 +183,18 @@ class GraphRunner:
+     def replay(self, batch: Batch) -> torch.Tensor:
+         assert self.can_use_cuda_graph(batch)
+         self.buffer.copy_from(batch)
+-        use_hybrid = self.use_hybrid_graph is not None and self.use_hybrid_graph()
+-        variant = "hybrid" if use_hybrid else "pure-gpu"
+-        graphs = self.hybrid_graph_map if use_hybrid else self.graph_map
++        moe_hybrid = self.use_hybrid_graph is not None and self.use_hybrid_graph()
++        attention_hybrid = bool(
++            getattr(batch.attn_metadata, "attention_hybrid", False)
++        )
++        if attention_hybrid and not moe_hybrid:
++            raise RuntimeError("Temporary KV requires an offloaded expert buffer")
++        if attention_hybrid:
++            variant, graphs = "kv+moe-hybrid", self.hybrid_graph_map
++        elif moe_hybrid:
++            variant, graphs = "moe-hybrid", self.moe_graph_map
++        else:
++            variant, graphs = "pure-gpu", self.graph_map
+         if variant not in self._logged_replay_variants:
+             logger.info_rank0(
+                 "CUDA graph replay active: variant=%s, padded_batch_size=%d",
+@@ -183,8 +208,11 @@ class GraphRunner:
+         return self.buffer.logits[: batch.size]
+ 
+     def pad_batch(self, batch: Batch) -> None:
++        graph_sizes = (self.hybrid_bs_list
++                       if self.use_hybrid_graph is not None and self.use_hybrid_graph()
++                       else self.graph_bs_list)
+         padded_size = (  # choose the first available batch size
+-            next(bs for bs in self.graph_bs_list if bs >= batch.size)
++            next(bs for bs in graph_sizes if bs >= batch.size)
+             if self.can_use_cuda_graph(batch)
+             else batch.size
+         )
+@@ -193,5 +221,6 @@ class GraphRunner:
+     # NOTE: This must be called before freeing NCCL resources to prevent program hang
+     def destroy_cuda_graphs(self) -> None:
+         del self.graph_map
++        del self.moe_graph_map
+         del self.hybrid_graph_map
+         gc.collect()
+diff --git a/python/minisgl/kernel/triton/expert_attention.py b/python/minisgl/kernel/triton/expert_attention.py
+index 27855ff..f3e7b6a 100644
+--- a/python/minisgl/kernel/triton/expert_attention.py
++++ b/python/minisgl/kernel/triton/expert_attention.py
+@@ -2,6 +2,7 @@
+ 
+ import triton
+ import triton.language as tl
++import torch
+ 
+ 
+ @triton.jit
+@@ -41,33 +42,136 @@ def store_kv(k, v, slots, addresses, width):
+ 
+ 
+ @triton.jit
+-def _decode_attention(
++def _gather_kv(K, V, Slots, KP, VP, WIDTH: tl.constexpr, BLOCK: tl.constexpr):
++    token = tl.program_id(0)
++    offsets = tl.arange(0, BLOCK)
++    slot = tl.load(Slots + token)
++    kp = tl.load(KP + slot).to(tl.pointer_type(tl.bfloat16))
++    vp = tl.load(VP + slot).to(tl.pointer_type(tl.bfloat16))
++    tl.store(K + token * WIDTH + offsets, tl.load(kp + offsets, offsets < WIDTH, 0), offsets < WIDTH)
++    tl.store(V + token * WIDTH + offsets, tl.load(vp + offsets, offsets < WIDTH, 0), offsets < WIDTH)
++
++
++def gather_kv(slots, addresses, heads, dim):
++    # Per-layer read-only attention workspace, not persistent KV allocation.
++    shape = (slots.numel(), 1, heads, dim)
++    k = torch.empty(shape, dtype=torch.bfloat16, device=slots.device)
++    v = torch.empty_like(k)
++    width = heads * dim
++    _gather_kv[(slots.numel(),)](k, v, slots, addresses[0], addresses[1], width,
++                               triton.next_power_of_2(width))
++    return k, v
++
++
++@triton.jit
++def _gather_dense(K, V, KP, VP, Active, COUNT: tl.constexpr, WIDTH: tl.constexpr,
++                  BLOCK: tl.constexpr):
++    offsets = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
++    slot = offsets // WIDTH
++    column = offsets % WIDTH
++    valid = slot < COUNT
++    enabled = tl.load(Active + slot, valid, 0)
++    kp = tl.load(KP + slot, valid, 0).to(tl.pointer_type(tl.bfloat16))
++    vp = tl.load(VP + slot, valid, 0).to(tl.pointer_type(tl.bfloat16))
++    # All KV row addresses are at least 32-byte aligned. Rows remain contiguous
++    # in groups of 16 BF16 elements even when adjacent rows belong to experts
++    # at unrelated addresses. Make that invariant visible to vectorization.
++    kp = tl.multiple_of(kp, 16)
++    vp = tl.multiple_of(vp, 16)
++    k = tl.load(tl.max_contiguous(kp + column, 16), valid & enabled, 0)
++    v = tl.load(tl.max_contiguous(vp + column, 16), valid & enabled, 0)
++    tl.store(K + offsets, k, valid)
++    tl.store(V + offsets, v, valid)
++
++
++def gather_dense_kv(k, v, addresses, active):
++    count, _, heads, dim = k.shape
++    width = heads * dim
++    _gather_dense[(triton.cdiv(count * width, 2048),)](
++        k, v, addresses[0], addresses[1], active, count, width, 2048)
++
++
++@triton.jit
++def _copy_slots(
++    Addresses,
++    Sources,
++    Destinations,
++    TOTAL_SLOTS: tl.constexpr,
++    LAYERS: tl.constexpr,
++    WIDTH: tl.constexpr,
++    BLOCK: tl.constexpr,
++):
++    token = tl.program_id(0)
++    layer = tl.program_id(1)
++    kind = tl.program_id(2)
++    offsets = tl.arange(0, BLOCK)
++    source = tl.load(Sources + token)
++    destination = tl.load(Destinations + token)
++    base = (kind * LAYERS + layer) * TOTAL_SLOTS
++    source_ptr = tl.load(Addresses + base + source).to(tl.pointer_type(tl.bfloat16))
++    destination_ptr = tl.load(Addresses + base + destination).to(
++        tl.pointer_type(tl.bfloat16)
++    )
++    values = tl.load(source_ptr + offsets, offsets < WIDTH)
++    tl.store(destination_ptr + offsets, values, offsets < WIDTH)
++
++
++def copy_slots(addresses, sources, destinations, width):
++    """Copy complete multi-layer K/V blocks between logical slot addresses."""
++    assert sources.numel() == destinations.numel()
++    if sources.numel() == 0:
++        return
++    _, layers, total_slots = addresses.shape
++    _copy_slots[(sources.numel(), layers, 2)](
++        addresses,
++        sources,
++        destinations,
++        total_slots,
++        layers,
++        width,
++        triton.next_power_of_2(width),
++    )
++
++
++@triton.jit
++def _decode_attention_split(
+     Q,
+-    O,
+     Table,
+     KP,
+     VP,
+     SeqLens,
++    PartialMax,
++    PartialDenom,
++    PartialAcc,
+     QS: tl.constexpr,
+     QH: tl.constexpr,
+-    OS: tl.constexpr,
+     TS: tl.constexpr,
+     HEADS: tl.constexpr,
+     KV_HEADS: tl.constexpr,
++    GROUP: tl.constexpr,
++    GROUP_BLOCK: tl.constexpr,
+     D: tl.constexpr,
+     SCALE: tl.constexpr,
+     BN: tl.constexpr,
++    SPLITS: tl.constexpr,
+ ):
+     request = tl.program_id(0)
+-    head = tl.program_id(1)
+-    kv_head = head // (HEADS // KV_HEADS)
++    kv_head = tl.program_id(1)
++    split = tl.program_id(2)
++    groups = tl.arange(0, GROUP_BLOCK)
+     dims = tl.arange(0, D)
+-    q = tl.load(Q + request * QS + head * QH + dims).to(tl.float32)
++    heads = kv_head * GROUP + groups
++    q = tl.load(
++        Q + request * QS + heads[:, None] * QH + dims[None, :],
++        groups[:, None] < GROUP,
++        0.0,
++    )
+     klen = tl.load(SeqLens + request)
+-    maximum = -float("inf")
+-    denominator = 0.0
+-    accumulator = tl.zeros((D,), tl.float32)
+-    for block in range(0, tl.cdiv(klen, BN)):
++    maximum = tl.full((GROUP_BLOCK,), -float("inf"), tl.float32)
++    denominator = tl.zeros((GROUP_BLOCK,), tl.float32)
++    accumulator = tl.zeros((GROUP_BLOCK, D), tl.float32)
++    block = split
++    while block * BN < klen:
+         columns = block * BN + tl.arange(0, BN)
+         valid = columns < klen
+         slots = tl.load(Table + request * TS + columns, valid, 0)
+@@ -75,36 +179,108 @@ def _decode_attention(
+         vp = tl.load(VP + slots).to(tl.pointer_type(tl.bfloat16))
+         k = tl.load(kp[None, :] + kv_head * D + dims[:, None], valid[None, :], 0.0)
+         v = tl.load(vp[:, None] + kv_head * D + dims[None, :], valid[:, None], 0.0)
+-        score = tl.sum(q[:, None] * k, axis=0) * SCALE
+-        score = tl.where(valid, score, -float("inf"))
+-        new_max = tl.maximum(maximum, tl.max(score, axis=0))
+-        probability = tl.exp(score - new_max)
++        # All query heads in one GQA group share this K/V head. Loading K and V
++        # once here avoids the previous GROUP-fold redundant HBM traffic.
++        score = tl.dot(q, k).to(tl.float32) * SCALE
++        score = tl.where(valid[None, :], score, -float("inf"))
++        new_max = tl.maximum(maximum, tl.max(score, axis=1))
++        probability = tl.exp(score - new_max[:, None])
+         correction = tl.exp(maximum - new_max)
+-        accumulator = accumulator * correction + tl.sum(probability[:, None] * v, axis=0)
+-        denominator = denominator * correction + tl.sum(probability, axis=0)
++        accumulator = accumulator * correction[:, None]
++        accumulator += tl.dot(probability.to(tl.bfloat16), v)
++        denominator = denominator * correction + tl.sum(probability, axis=1)
+         maximum = new_max
+-    tl.store(O + request * OS + head * D + dims, accumulator / denominator)
++        block += SPLITS
++
++    partial = (request * HEADS + heads) * SPLITS + split
++    tl.store(PartialMax + partial, maximum, groups < GROUP)
++    tl.store(PartialDenom + partial, denominator, groups < GROUP)
++    tl.store(
++        PartialAcc + partial[:, None] * D + dims[None, :],
++        accumulator,
++        groups[:, None] < GROUP,
++    )
++
++
++@triton.jit
++def _decode_attention_reduce(
++    O,
++    SeqLens,
++    PartialMax,
++    PartialDenom,
++    PartialAcc,
++    OS: tl.constexpr,
++    HEADS: tl.constexpr,
++    D: tl.constexpr,
++    SPLITS: tl.constexpr,
++):
++    request = tl.program_id(0)
++    head = tl.program_id(1)
++    dims = tl.arange(0, D)
++    splits = tl.arange(0, SPLITS)
++    base = (request * HEADS + head) * SPLITS
++    maxima = tl.load(PartialMax + base + splits)
++    maximum = tl.max(maxima, axis=0)
++    correction = tl.exp(maxima - maximum)
++    denominators = tl.load(PartialDenom + base + splits)
++    denominator = tl.sum(denominators * correction, axis=0)
++    accumulators = tl.load(
++        PartialAcc + (base + splits[:, None]) * D + dims[None, :]
++    )
++    accumulator = tl.sum(accumulators * correction[:, None], axis=0)
++    result = accumulator / denominator
++    result = tl.where(tl.load(SeqLens + request) > 0, result, 0.0)
++    tl.store(O + request * OS + head * D + dims, result)
+ 
+ 
+ def decode_attention(q, output, table, addresses, seq_lens, kv_heads):
+     """CUDA-graph-safe batched decode over the fixed expert KV address table."""
+     _, heads, dim = q.shape
+-    _decode_attention[(q.shape[0], heads)](
++    # A single program per head serializes a long sequence and leaves most SMs
++    # idle when only a few requests own temporary KV. Eight interleaved splits
++    # expose sequence parallelism; the second kernel combines their online
++    # softmax states. PyTorch's CUDA-graph pool reuses these workspaces across
++    # layers, so the split does not multiply persistent graph memory by depth.
++    splits = 8
++    group = heads // kv_heads
++    partial_max = torch.empty(
++        (q.shape[0], heads, splits), dtype=torch.float32, device=q.device
++    )
++    partial_denom = torch.empty_like(partial_max)
++    partial_acc = torch.empty(
++        (q.shape[0], heads, splits, dim), dtype=torch.float32, device=q.device
++    )
++    _decode_attention_split[(q.shape[0], kv_heads, splits)](
+         q,
+-        output,
+         table,
+         addresses[0],
+         addresses[1],
+         seq_lens,
++        partial_max,
++        partial_denom,
++        partial_acc,
+         q.stride(0),
+         q.stride(1),
+-        output.stride(0),
+         table.stride(0),
+         heads,
+         kv_heads,
++        group,
++        max(16, triton.next_power_of_2(group)),
+         dim,
+         dim**-0.5,
+         32,
++        splits,
++    )
++    _decode_attention_reduce[(q.shape[0], heads)](
++        output,
++        seq_lens,
++        partial_max,
++        partial_denom,
++        partial_acc,
++        output.stride(0),
++        heads,
++        dim,
++        splits,
+     )
+ 
+ 
+diff --git a/python/minisgl/kvcache/expert_pool.py b/python/minisgl/kvcache/expert_pool.py
+index 1ac7408..a5c02a6 100644
+--- a/python/minisgl/kvcache/expert_pool.py
++++ b/python/minisgl/kvcache/expert_pool.py
+@@ -2,7 +2,11 @@
+ 
+ from __future__ import annotations
+ 
++from functools import cached_property
++
+ import torch
++from minisgl.distributed import get_tp_info
++from minisgl.utils import div_even
+ 
+ from .mha_pool import MHAKVCache
+ from .unified import UnifiedKVAllocator
+@@ -10,7 +14,11 @@ from .unified import UnifiedKVAllocator
+ 
+ class ExpertKVCache(MHAKVCache):
+     def __init__(self, config, num_pages: int, device, catalog):
++        heads = div_even(config.num_kv_heads, get_tp_info().size, allow_replicate=True)
+         super().__init__(
++            # MHAKVCache performs the TP head sharding internally.  Passing the
++            # already-local count here would shard twice and make the address
++            # table stride past the actual persistent KV allocation.
+             config.num_kv_heads,
+             config.num_layers,
+             config.head_dim,
+@@ -19,7 +27,7 @@ class ExpertKVCache(MHAKVCache):
+             torch.bfloat16,
+             device,
+         )
+-        self.heads = config.num_kv_heads
++        self.heads = heads
+         self.head_dim = config.head_dim
+         self.layer_elements = self.heads * self.head_dim
+         # One allocation owns a token's K and V for EVERY layer.
+@@ -34,6 +42,13 @@ class ExpertKVCache(MHAKVCache):
+                 self.region_start[region.region_id] = total
+                 total += region.capacity_blocks
+         self.total_slots = total
++        self.active_slots = torch.zeros(total, dtype=torch.bool, device=device)
++        self.active_slots[:num_pages + 1] = True
++        self.expert_slot_ranges = {
++            storage.key: [(self.region_start[region.region_id], region.capacity_blocks)
++                          for region in (storage.gate_up_region, storage.down_region)]
++            for storage in catalog
++        }
+         addresses = torch.empty((2, config.num_layers, total), dtype=torch.int64)
+         offsets = torch.arange(num_pages + 1, dtype=torch.int64) * self.layer_elements * 2
+         for layer in range(config.num_layers):
+@@ -46,24 +61,50 @@ class ExpertKVCache(MHAKVCache):
+                     raise ValueError("Expert KV reuse requires contiguous BF16 slices")
+                 count = region.capacity_blocks
+                 view = tensor.view(-1)[: count * self.block_nbytes // 2].view(
+-                    count, 2, config.num_layers, self.heads, self.head_dim
++                    2, config.num_layers, count, self.heads, self.head_dim
+                 )
+                 self.region_views.append(view)
+                 start = self.region_start[region.region_id]
+-                token_offsets = torch.arange(count, dtype=torch.int64) * self.block_nbytes
++                # The allocator owns all layers of a logical token, but those
++                # rows need not be adjacent in physical memory. Layer-major
++                # storage keeps an attention layer's expert KV reads contiguous.
++                token_offsets = torch.arange(count, dtype=torch.int64) * self.layer_elements * 2
+                 for kind in range(2):
+                     for layer in range(config.num_layers):
+                         addresses[kind, layer, start : start + count] = (
+                             tensor.data_ptr()
+                             + token_offsets
+-                            + (kind * config.num_layers + layer) * self.layer_elements * 2
++                            + (kind * config.num_layers + layer) * count * self.layer_elements * 2
+                         )
+         self.addresses = addresses.to(device)
+ 
+     def slot_id(self, block) -> int:
+         return self.region_start[block.region_id] + block.local_block_id
+ 
++    @cached_property
++    def attention_workspace(self):
++        # Only the compatibility path needs a layer of transient scratch KV.
++        # The indirect FlashInfer path never allocates or gathers this workspace.
++        return tuple(torch.empty(
++            (self.total_slots, 1, self.heads, self.head_dim),
++            dtype=torch.bfloat16, device=self.device) for _ in range(2))
++
++    def set_expert_active(self, key, active):
++        for start, count in self.expert_slot_ranges[key]:
++            self.active_slots[start:start + count] = active
++
++    def gather_attention_workspace(self, layer_id):
++        from minisgl.kernel.triton.expert_attention import gather_dense_kv
++        k, v = self.attention_workspace
++        gather_dense_kv(k, v, self.addresses[:, layer_id], self.active_slots)
++        return k, v
++
+     def store_kv(self, k, v, out_loc, layer_id: int) -> None:
+         from minisgl.kernel.triton.expert_attention import store_kv
+ 
+         store_kv(k, v, out_loc, self.addresses[:, layer_id], self.layer_elements)
++
++    def copy_slots(self, sources: torch.Tensor, destinations: torch.Tensor) -> None:
++        from minisgl.kernel.triton.expert_attention import copy_slots
++
++        copy_slots(self.addresses, sources, destinations, self.layer_elements)
+diff --git a/python/minisgl/kvcache/unified.py b/python/minisgl/kvcache/unified.py
+index 6b9a494..28d11b7 100644
+--- a/python/minisgl/kvcache/unified.py
++++ b/python/minisgl/kvcache/unified.py
+@@ -246,6 +246,39 @@ class UnifiedKVAllocator:
+                 break
+         return tuple(allocated)
+ 
++    def allocate_persistent(self, count: int) -> tuple[KVBlockRef, ...]:
++        """Allocate only from the normal KV pool.
++
++        The expert-cache scheduler uses this to keep ordinary requests entirely
++        on the contiguous FlashInfer-compatible pool.  Falling through into an
++        expert region here would turn every row in a decode batch into a
++        pointer-attention row.
++        """
++        return self.persistent_region.allocate(count)
++
++    def allocate_temporary(self, count: int) -> tuple[KVBlockRef, ...]:
++        """Allocate only from active expert-backed KV regions."""
++        if isinstance(count, bool) or not isinstance(count, int):
++            raise TypeError("Block count must be an integer")
++        if count < 0:
++            raise ValueError("Block count must be non-negative")
++        if count > self.temporary_available_blocks:
++            raise MemoryError(
++                f"Temporary KV regions have {self.temporary_available_blocks} "
++                f"free blocks, but {count} were requested"
++            )
++
++        remaining = count
++        allocated: list[KVBlockRef] = []
++        for region in self._temporary_regions.values():
++            take = min(remaining, region.free_blocks)
++            if take:
++                allocated.extend(region.allocate(take))
++                remaining -= take
++            if remaining == 0:
++                break
++        return tuple(allocated)
++
+     def release(self, blocks: Iterable[KVBlockRef]) -> None:
+         """Release final KV ownership, after ordering GPU accesses in the caller.
+ 
+diff --git a/python/minisgl/moe/kt.py b/python/minisgl/moe/kt.py
+index 54b7340..8997c40 100644
+--- a/python/minisgl/moe/kt.py
++++ b/python/minisgl/moe/kt.py
+@@ -1,8 +1,9 @@
+-"""Single-GPU BF16 experts: Mini-SGLang on GPU, KTransformers on CPU."""
++"""BF16 experts: Mini-SGLang on GPU, KTransformers on CPU."""
+ 
+ from __future__ import annotations
+ 
+ import torch
++from minisgl.distributed import try_get_tp_info
+ from minisgl.utils import init_logger
+ 
+ from .fused import fused_experts_impl, fused_topk
+@@ -19,20 +20,64 @@ class KTExperts:
+         max_tokens: int,
+         catalog,
+         method: str = "BF16",
++        threadpool_count: int = 1,
++        max_deferred_experts_per_token: int = 0,
++        commit_stream=None,
++        static_offload: bool = False,
+     ):
+         from kt_kernel import KTMoEWrapper
+ 
+         self.layers = {layer.layer_id: layer for layer in layers}
++        catalog = tuple(catalog)
++        self.candidate_keys = frozenset(storage.key for storage in catalog)
++        self.candidate_layer_ids = frozenset(key[0] for key in self.candidate_keys)
++        self.static_offload = static_offload
+         self.wrappers = {}
+         self.gpu_masks = {}
++        self.gpu_expert_maps = {}
+         self.expert_maps = {}  # KT's native interface reads uint64_t entries.
+-        self.offloaded = {layer.layer_id: set() for layer in layers}
++        self.offloaded = {layer_id: set() for layer_id in self.candidate_layer_ids}
++        self.commit_stream = commit_stream
++        self.fetch_stream = torch.cuda.Stream(device=layers[0].gate_up_proj.device)
++        tp_info = try_get_tp_info()
++        self.tp_rank = tp_info.rank if tp_info is not None else 0
++        self.tp_size = (
++            tp_info.size
++            if tp_info is not None
++            else (getattr(layers[0], "tp_size", 1) if layers else 1)
++        )
++        if self.tp_rank == 0:
++            logger.info(
++                "KT CPU executor: cpuinfer=%d, threadpool_count=%d, "
++                "max_deferred_experts_per_token=%d",
++                threads,
++                threadpool_count,
++                max_deferred_experts_per_token,
++            )
+         # Exact GPU-layout copies only for candidates. KT owns all CPU experts.
+-        self.originals = {
+-            storage.key: (storage.gate_up_tensor.cpu(), storage.down_tensor.cpu())
+-            for storage in catalog
+-        }
++        self.originals = (
++            {}
++            if static_offload
++            else {
++                storage.key: (
++                    storage.gate_up_tensor.cpu().pin_memory(),
++                    storage.down_tensor.cpu().pin_memory(),
++                )
++                for storage in catalog
++            }
++        )
++        max_layer_id = max(self.layers) if self.layers else -1
++        max_experts = max((layer.num_experts for layer in layers), default=0)
++        mask_device = layers[0].gate_up_proj.device if layers else "cpu"
++        # Single device-side source of truth used by every MoE layer.  KT keeps
++        # its native host mask per wrapper; route_to_cpu/route_to_gpu update both
++        # views as one residency transaction.
++        self.global_gpu_mask = torch.ones(
++            (max_layer_id + 1, max_experts), dtype=torch.bool, device=mask_device
++        )
+         for layer in layers:
++            if layer.layer_id not in self.candidate_layer_ids:
++                continue
+             wrapper = KTMoEWrapper(
+                 layer_idx=layer.layer_id,
+                 num_experts=layer.num_experts,
+@@ -41,18 +86,48 @@ class KTExperts:
+                 moe_intermediate_size=layer.intermediate_size,
+                 gpu_experts_mask=None,  # Load ALL experts before marking them GPU resident.
+                 cpuinfer_threads=threads,
+-                threadpool_count=1,
++                threadpool_count=threadpool_count,
+                 weight_path=model_path,
+                 chunked_prefill_size=max_tokens,
+                 method=method,
+-                max_deferred_experts_per_token=0,
++                max_deferred_experts_per_token=max_deferred_experts_per_token,
+             )
+             expert_map = torch.arange(layer.num_experts, dtype=torch.int64, device="cpu")
+             self.expert_maps[layer.layer_id] = expert_map
+             wrapper.load_weights(expert_map)
+             wrapper.gpu_experts_mask.fill_(True)  # Preserve the pointer held by KT C++.
++            cold_ids = sorted(
++                expert_id
++                for layer_id, expert_id in self.candidate_keys
++                if layer_id == layer.layer_id
++            )
++            if static_offload:
++                wrapper.gpu_experts_mask[cold_ids] = False
++                self.offloaded[layer.layer_id].update(cold_ids)
+             self.wrappers[layer.layer_id] = wrapper
+-            self.gpu_masks[layer.layer_id] = wrapper.gpu_experts_mask.to(layer.gate_up_proj.device)
++            self.gpu_masks[layer.layer_id] = self.global_gpu_mask[
++                layer.layer_id, : layer.num_experts
++            ]
++            if not static_offload:
++                self.gpu_expert_maps[layer.layer_id] = torch.arange(
++                    layer.num_experts, dtype=torch.int64, device=mask_device)
++            if static_offload:
++                self.gpu_masks[layer.layer_id][cold_ids] = False
++                gpu_expert_map = torch.full(
++                    (layer.num_experts,),
++                    -1,
++                    dtype=torch.int64,
++                    device=mask_device,
++                )
++                gpu_expert_ids = getattr(
++                    layer,
++                    "gpu_expert_ids",
++                    tuple(i for i in range(layer.num_experts) if i not in cold_ids),
++                )
++                gpu_expert_map[
++                    torch.tensor(gpu_expert_ids, dtype=torch.int64, device=mask_device)
++                ] = torch.arange(len(gpu_expert_ids), dtype=torch.int64, device=mask_device)
++                self.gpu_expert_maps[layer.layer_id] = gpu_expert_map
+ 
+     @staticmethod
+     def set_capture_batch_sizes(batch_sizes) -> None:
+@@ -64,27 +139,63 @@ class KTExperts:
+     def route_to_cpu(self, key) -> None:
+         layer, expert = key
+         self.wrappers[layer].gpu_experts_mask[expert] = False
+-        self.gpu_masks[layer][expert] = False
++        stream = self.commit_stream or torch.cuda.current_stream(
++            self.gpu_masks[layer].device
++        )
++        with torch.cuda.stream(stream):
++            self.gpu_masks[layer][expert] = False
++            self.gpu_expert_maps[layer][expert] = -1
++            if hasattr(self, "kv_pool"):
++                self.kv_pool.set_expert_active(key, True)
+         self.offloaded[layer].add(expert)
+ 
+-    def restore_weights(self, key) -> None:
++    def restore_weights(self, key):
++        if self.static_offload:
++            raise RuntimeError("Static CPU experts cannot be restored to GPU")
+         layer, expert = key
+         gate, down = self.layers[layer].expert_tensor_views(expert)
+         original_gate, original_down = self.originals[key]
+-        gate.copy_(original_gate)
+-        down.copy_(original_down)
+-        torch.cuda.current_stream(gate.device).synchronize()
++        # A speculative decode may still read logically released KV pages.
++        if self.commit_stream is not None:
++            with torch.cuda.stream(self.commit_stream):
++                if hasattr(self, "kv_pool"):
++                    self.kv_pool.set_expert_active(key, False)
++            self.fetch_stream.wait_stream(self.commit_stream)
++        with torch.cuda.stream(self.fetch_stream):
++            gate.copy_(original_gate, non_blocking=True)
++            down.copy_(original_down, non_blocking=True)
++            done = torch.cuda.Event()
++            done.record(self.fetch_stream)
++        return done
+ 
+     def route_to_gpu(self, key) -> None:
++        if self.static_offload:
++            raise RuntimeError("Static CPU experts cannot be routed to GPU")
+         layer, expert = key
+         self.wrappers[layer].gpu_experts_mask[expert] = True
+-        self.gpu_masks[layer][expert] = True
++        # Enqueue the device-mask commit on the engine stream. It is therefore
++        # ordered after the preceding batch and before the next batch, without
++        # synchronizing either stream on the CPU.
++        stream = self.commit_stream or torch.cuda.current_stream(
++            self.gpu_masks[layer].device
++        )
++        with torch.cuda.stream(stream):
++            self.gpu_masks[layer][expert] = True
++            self.gpu_expert_maps[layer][expert] = expert
+         self.offloaded[layer].remove(expert)
+         logger.info_rank0("KV-MoE restore layer=%d expert=%d", layer, expert)
+ 
+     def has_offloaded_experts(self) -> bool:
+         return any(self.offloaded.values())
+ 
++    def agree_fetch_completion(self, ready):
++        if self.tp_size == 1:
++            return ready
++        values = torch.tensor(ready, dtype=torch.int32, device="cpu")
++        torch.distributed.all_reduce(values, op=torch.distributed.ReduceOp.MIN,
++                                     group=self.tp_cpu_group)
++        return values.tolist()
++
+     def forward(self, layer_id: int, **kwargs) -> torch.Tensor:
+         x = kwargs["hidden_states"]
+         weights, ids = fused_topk(x, kwargs["gating_output"], kwargs["topk"], kwargs["renormalize"])
+@@ -98,6 +209,12 @@ class KTExperts:
+         except AssertionError:  # Direct backend/kernel tests do not install an engine context.
+             metadata = None
+         hybrid_graph = bool(getattr(metadata, "moe_hybrid", False))
++        # This branch is invariant for the lifetime of the engine.  Layers with
++        # no profile candidates can never be evicted, so even the hybrid graph
++        # keeps their original fused GPU MoE path and avoids a KT callback.
++        candidate_layers = getattr(self, "candidate_layer_ids", self.wrappers.keys())
++        if layer_id not in candidate_layers:
++            return fused_experts_impl(x, kwargs["w1"], kwargs["w2"], weights, ids)
+         if not hybrid_graph and not self.offloaded[layer_id]:
+             return fused_experts_impl(x, kwargs["w1"], kwargs["w2"], weights, ids)
+ 
+@@ -106,10 +223,17 @@ class KTExperts:
+         # The hybrid graph has one stable topology and reads the masks at replay.
+         # A separate pure-GPU graph avoids these host callbacks when every expert
+         # has returned to the GPU.
+-        wrapper.submit_forward(x, ids, weights, stream)
+-        gpu_ids = ids.masked_fill(~self.gpu_masks[layer_id][ids.long()], -1)
++        # KT holds a complete CPU expert, while the GPU expert weights are TP
++        # shards.  Compute the replicated CPU contribution on one rank only;
++        # the MoE layer's existing all-reduce broadcasts it to every rank.
++        if self.tp_rank == 0:
++            wrapper.submit_forward(x, ids, weights, stream)
++        # A stable identity/-1 lookup needs one gather, avoiding separate
++        # bool-index, inversion and masked-fill kernels in every MoE layer.
++        gpu_ids = self.gpu_expert_maps[layer_id][ids.long()]
+         gpu_output = fused_experts_impl(
+             x, kwargs["w1"], kwargs["w2"], weights, gpu_ids, masked_experts=True
+         )
+-        cpu_output = wrapper.sync_forward(x, stream)
+-        return gpu_output.add_(cpu_output)
++        if self.tp_rank != 0:
++            return gpu_output
++        return gpu_output.add_(wrapper.sync_forward(x, stream))
+diff --git a/python/minisgl/moe/memory.py b/python/minisgl/moe/memory.py
+index 2fe2c6f..8a32fd3 100644
+--- a/python/minisgl/moe/memory.py
++++ b/python/minisgl/moe/memory.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
+-from typing import Callable, Protocol
++from functools import cached_property
++from typing import Any, Callable, Protocol
+ 
+ from minisgl.kvcache.unified import TemporaryKVRegion, TemporaryKVRegionState, UnifiedKVAllocator
+ 
+@@ -21,12 +22,8 @@ class ExpertMemoryBackend(Protocol):
+         """Update the expert mask so subsequent forwards use KT."""
+         ...
+ 
+-    def restore_weights(self, key: ExpertKey) -> None:
+-        """Copy both original weights back, ordered after KV accesses.
+-
+-        This synchronous reference interface returns only when the copy is done.
+-        Residency must remain CPU-side until then.
+-        """
++    def restore_weights(self, key: ExpertKey) -> Any:
++        """Launch both weight copies and return an event-like completion token."""
+         ...
+ 
+     def route_to_gpu(self, key: ExpertKey) -> None: ...
+@@ -42,6 +39,9 @@ class ExpertMemoryManager:
+         allocator: UnifiedKVAllocator,
+         backend: ExpertMemoryBackend,
+         transition_barrier: Callable[[], None] | None = None,
++        max_offloaded_experts: int | None = None,
++        restore_headroom_blocks: int = 0,
++        restore_stability_flushes: int = 1,
+     ) -> None:
+         catalog_keys = frozenset(storage.key for storage in storage_catalog)
+         if catalog_keys != controller.profile.allowed_keys:
+@@ -56,6 +56,18 @@ class ExpertMemoryManager:
+         self.allocator = allocator
+         self.backend = backend
+         self.transition_barrier = transition_barrier
++        if max_offloaded_experts is not None and max_offloaded_experts < 1:
++            raise ValueError("max_offloaded_experts must be positive")
++        if restore_headroom_blocks < 0:
++            raise ValueError("restore_headroom_blocks must be non-negative")
++        if restore_stability_flushes < 1:
++            raise ValueError("restore_stability_flushes must be positive")
++        self.max_offloaded_experts = max_offloaded_experts
++        self.restore_headroom_blocks = restore_headroom_blocks
++        self.restore_stability_flushes = restore_stability_flushes
++        self._restore_headroom_streak = 0
++        self.pending_restorations: set[ExpertKey] = set()
++        self.fetch_events: dict[ExpertKey, Any] = {}
+         for storage in storage_catalog:
+             for region in self._regions(storage.key):
+                 try:
+@@ -71,8 +83,40 @@ class ExpertMemoryManager:
+         if allocator.on_expert_release is not None:
+             raise ValueError("Allocator already has an expert release owner")
+         allocator.on_expert_release = self._restore_if_empty
++        self.available_gpu_capacity_blocks = sum(self.capacity_blocks.values())
+ 
+     @property
++    def admission_eviction_capacity_blocks(self) -> int:
++        """GPU storage that admission may safely promise to the next batch.
++
++        Advertising every candidate at once lets prefill admit an enormous burst
++        and forces hundreds of experts onto the CPU before the scheduler can
++        observe the resulting execution cost.  Keep a bounded sliding window;
++        restored experts reopen the window later.
++        """
++        active = self.controller.residency.keys_in(
++            ExpertResidencyState.EVICTING,
++            ExpertResidencyState.CPU_RESIDENT,
++            ExpertResidencyState.RESTORING,
++        )
++        remaining = (
++            len(self.controller.profile.entries)
++            if self.max_offloaded_experts is None
++            else max(0, self.max_offloaded_experts - len(active))
++        )
++        if remaining == 0:
++            return 0
++        capacity = 0
++        for entry in self.controller.profile.entries:
++            if self.controller.residency.state(entry.key) is not ExpertResidencyState.GPU_RESIDENT:
++                continue
++            capacity += self.capacity_blocks[entry.key]
++            remaining -= 1
++            if remaining == 0:
++                break
++        return capacity
++
++    @cached_property
+     def capacity_blocks(self) -> dict[ExpertKey, int]:
+         result: dict[ExpertKey, int] = {}
+         for storage in self.storage_catalog:
+@@ -86,9 +130,28 @@ class ExpertMemoryManager:
+             temporary_available_blocks=self.allocator.temporary_available_blocks,
+             upcoming_demand_blocks=upcoming_demand_blocks,
+         )
+-        return self.controller.plan_evictions(pressure, self.capacity_blocks)
++        active = self.controller.residency.keys_in(
++            ExpertResidencyState.EVICTING,
++            ExpertResidencyState.CPU_RESIDENT,
++            ExpertResidencyState.RESTORING,
++        )
++        remaining = (
++            len(self.controller.profile.entries)
++            if self.max_offloaded_experts is None
++            else max(0, self.max_offloaded_experts - len(active))
++        )
++        limited_capacity: dict[ExpertKey, int] = {}
++        for entry in self.controller.profile.entries:
++            if remaining == 0:
++                break
++            if self.controller.residency.state(entry.key) is not ExpertResidencyState.GPU_RESIDENT:
++                continue
++            limited_capacity[entry.key] = self.capacity_blocks[entry.key]
++            remaining -= 1
++        return self.controller.plan_evictions(pressure, limited_capacity)
+ 
+     def begin_eviction(self, key: ExpertKey) -> None:
++        self.pending_restorations.discard(key)
+         gate_up, down = self._regions(key)
+         self._require_region_states(
+             key,
+@@ -102,6 +165,21 @@ class ExpertMemoryManager:
+         # operation: the caller must order its first KV write after old readers.
+         self.backend.route_to_cpu(key)
+ 
++    def evict_many(self, keys: tuple[ExpertKey, ...]) -> None:
++        """Synchronize once, then expose a JSON-ordered eviction prefix."""
++        if not keys:
++            return
++        if self.transition_barrier is not None:
++            self.transition_barrier()
++        barrier = self.transition_barrier
++        self.transition_barrier = None
++        try:
++            for key in keys:
++                self.begin_eviction(key)
++                self.complete_eviction(key)
++        finally:
++            self.transition_barrier = barrier
++
+     def complete_eviction(self, key: ExpertKey) -> None:
+         """Expose storage after old weight reads are ordered before KV writes."""
+         if self.controller.residency.state(key) is not ExpertResidencyState.EVICTING:
+@@ -115,27 +193,75 @@ class ExpertMemoryManager:
+         gate_up.activate()
+         down.activate()
+         self.controller.complete_eviction(key)
++        self.available_gpu_capacity_blocks -= self.capacity_blocks[key]
++        # Also cover evictions followed by a deferred/empty batch. Allocation
++        # removes eligibility via live_blocks before the next flush.
++        self.pending_restorations.add(key)
+ 
+     def _restore_if_empty(self, key: ExpertKey) -> None:
+-        """Eager restoration on final release, independent of global pressure."""
+-        if self.controller.residency.state(key) is not ExpertResidencyState.CPU_RESIDENT:
+-            return
++        """Mark an empty expert for restoration after the allocation phase."""
++        gate_up, down = self._regions(key)
++        if (
++            self.controller.residency.state(key) is ExpertResidencyState.CPU_RESIDENT
++            and gate_up.live_blocks == 0
++            and down.live_blocks == 0
++        ):
++            self.pending_restorations.add(key)
++
++    def flush_pending_restorations(self) -> int:
++        """Launch asynchronous fetches that stayed unused by the next batch.
++
++        Release callbacks only enqueue work.  The scheduler flushes after it has
++        allocated the next token/batch, so a buffer needed immediately is reused
++        instead of being fetched and evicted again.
++        """
++        pending = sorted(self.pending_restorations)
++        self.pending_restorations.clear()
++        launched = 0
++        for key in pending:
++            gate_up, down = self._regions(key)
++            if (
++                self.controller.residency.state(key) is ExpertResidencyState.CPU_RESIDENT
++                and gate_up.live_blocks == 0
++                and down.live_blocks == 0
++            ):
++                self._restore_one(key)
++                launched += 1
++        return launched
++
++    def _restore_one(self, key: ExpertKey) -> None:
+         gate_up, down = self._regions(key)
+-        if gate_up.live_blocks or down.live_blocks:
+-            return
+         self._require_region_states(
+             key,
+             (gate_up, down),
+             TemporaryKVRegionState.ACTIVE,
+         )
+-        if self.transition_barrier is not None:
+-            self.transition_barrier()
++        # The expert remains CPU-routed until the event completes. RECLAIMED
++        # regions are unavailable to the allocator throughout the copy.
+         gate_up.reclaim()
+         down.reclaim()
+         self.controller.begin_restoring(key)
+-        # Failure leaves both regions unavailable and execution on CPU.
+-        self.backend.restore_weights(key)
+-        self.complete_restoration(key)
++        event = self.backend.restore_weights(key)
++        if event is None:
++            # Lightweight test backends may implement an immediate copy.
++            self.complete_restoration(key)
++        else:
++            self.fetch_events[key] = event
++
++    def poll_restorations(self) -> int:
++        """Commit completed copies at a scheduler batch boundary."""
++        keys = sorted(self.fetch_events)
++        if not keys:
++            return 0
++        ready = [self.fetch_events[key].query() for key in keys]
++        agree = getattr(self.backend, "agree_fetch_completion", None)
++        if agree is not None:
++            ready = agree(ready)
++        completed = [key for key, done in zip(keys, ready) if done]
++        for key in completed:
++            del self.fetch_events[key]
++            self.complete_restoration(key)
++        return len(completed)
+ 
+     def complete_restoration(self, key: ExpertKey) -> None:
+         if self.controller.residency.state(key) is not ExpertResidencyState.RESTORING:
+@@ -150,6 +276,7 @@ class ExpertMemoryManager:
+         gate_up.deactivate()
+         down.deactivate()
+         self.controller.complete_restoration(key)
++        self.available_gpu_capacity_blocks += self.capacity_blocks[key]
+ 
+     def _regions(self, key: ExpertKey) -> tuple[TemporaryKVRegion, TemporaryKVRegion]:
+         storage = self.storage_catalog[key]
+diff --git a/python/minisgl/moe/offload.py b/python/minisgl/moe/offload.py
+index 0a171ee..54c0d79 100644
+--- a/python/minisgl/moe/offload.py
++++ b/python/minisgl/moe/offload.py
+@@ -78,15 +78,26 @@ class ExpertEvictionProfile:
+             raise ValueError(f"Unable to parse expert profile {profile_path}: {exc}") from exc
+ 
+         if not isinstance(raw_entries, (list, tuple)):
+-            raise ValueError("Expert profile must be a list or tuple of triples")
++            raise ValueError("Expert profile must be a list or tuple")
+ 
+         entries: list[ExpertProfileEntry] = []
+         for index, raw_entry in enumerate(raw_entries):
+-            if not isinstance(raw_entry, (list, tuple)) or len(raw_entry) != 3:
++            if isinstance(raw_entry, Mapping):
++                try:
++                    layer_id = raw_entry["layer_id"]
++                    expert_id = raw_entry["expert_id"]
++                    frequency = raw_entry["activation_frequency"]
++                except KeyError as exc:
++                    raise ValueError(
++                        f"Profile entry {index} is missing field {exc.args[0]!r}"
++                    ) from exc
++            elif isinstance(raw_entry, (list, tuple)) and len(raw_entry) == 3:
++                layer_id, expert_id, frequency = raw_entry
++            else:
+                 raise ValueError(
+-                    f"Profile entry {index} must be a (layer, expert, frequency) triple"
++                    f"Profile entry {index} must be a mapping or a "
++                    "(layer, expert, frequency) triple"
+                 )
+-            layer_id, expert_id, frequency = raw_entry
+             if isinstance(layer_id, bool) or not isinstance(layer_id, int):
+                 raise TypeError(f"Profile entry {index} has a non-integer layer_id")
+             if isinstance(expert_id, bool) or not isinstance(expert_id, int):
+@@ -96,6 +107,16 @@ class ExpertEvictionProfile:
+             entries.append(ExpertProfileEntry(layer_id, expert_id, float(frequency)))
+         return cls(entries)
+ 
++    def prefix(self, count: int) -> ExpertEvictionProfile:
++        """Return the `count` coldest entries while preserving profile order."""
++        if isinstance(count, bool) or not isinstance(count, int):
++            raise TypeError("Expert profile prefix count must be an integer")
++        if count < 1:
++            raise ValueError("Expert profile prefix count must be positive")
++        if count >= len(self._entries):
++            return self
++        return ExpertEvictionProfile(self._entries[:count])
++
+     @property
+     def entries(self) -> tuple[ExpertProfileEntry, ...]:
+         return self._entries
+diff --git a/python/minisgl/scheduler/cache.py b/python/minisgl/scheduler/cache.py
+index abe42ba..1190744 100644
+--- a/python/minisgl/scheduler/cache.py
++++ b/python/minisgl/scheduler/cache.py
+@@ -91,7 +91,7 @@ class CacheManager:
+             assert torch.all(self.free_slots % self.page_size == 0)
+ 
+     @contextmanager
+-    def lazy_free_region(self):
++    def lazy_free_region(self, *, flush_restorations: bool = True):
+         def lazy_free(indices: torch.Tensor) -> None:
+             lazy_free_list.append(indices[:: self.page_size])
+ 
+diff --git a/python/minisgl/scheduler/decode.py b/python/minisgl/scheduler/decode.py
+index f0493c9..d2e3a67 100644
+--- a/python/minisgl/scheduler/decode.py
++++ b/python/minisgl/scheduler/decode.py
+@@ -26,8 +26,10 @@ class DecodeManager:
+ 
+     @property
+     def inflight_tokens(self) -> int:
+-        tokens_reserved = (self.page_size - 1) * len(self.running_reqs)  # 1 page reserved
+-        return sum(req.remain_len for req in self.running_reqs) + tokens_reserved
++        # Lifetime reservation used only by prefill admission. Actual decode
++        # allocation and eviction continue to operate one batch at a time.
++        page_tail = (self.page_size - 1) * len(self.running_reqs)
++        return sum(req.remain_len for req in self.running_reqs) + page_tail
+ 
+     def schedule_next_batch(self) -> Batch | None:
+         if not self.runnable:
+diff --git a/python/minisgl/scheduler/expert_cache.py b/python/minisgl/scheduler/expert_cache.py
+index 37ce0e3..d6004c3 100644
+--- a/python/minisgl/scheduler/expert_cache.py
++++ b/python/minisgl/scheduler/expert_cache.py
+@@ -3,14 +3,25 @@
+ from contextlib import contextmanager
+ 
+ import torch
+-from minisgl.moe.offload import ExpertResidencyState
+-from minisgl.utils import init_logger
++from minisgl.utils import div_ceil, init_logger
+ 
+-from .cache import CacheManager
++from .cache import CacheManager, _write_page_table
+ 
+ logger = init_logger(__name__)
+ 
+ 
++class ExpertEvictionRequired(RuntimeError):
++    """The selected batch fits only after one or more new expert evictions."""
++
++    def __init__(self, needed_pages: int):
++        super().__init__(f"Batch needs {needed_pages} KV pages and requires expert eviction")
++        self.needed_pages = needed_pages
++
++
++class ExpertCapacityExhausted(RuntimeError):
++    """The configured expert prefix cannot provide enough KV capacity."""
++
++
+ class ExpertCacheManager(CacheManager):
+     def __init__(self, pool, manager, page_table, cache_type):
+         super().__init__(pool.allocator.persistent_capacity_blocks, 1, page_table, cache_type)
+@@ -18,55 +29,182 @@ class ExpertCacheManager(CacheManager):
+         self.manager = manager
+         self.allocator = pool.allocator
+         self.live = {}  # Global slot -> allocation reference (including its generation).
++        # Temporary slots are never inserted into the radix cache, so each has
++        # exactly one page-table owner and remains in place until final release.
++        self.temporary_locations: dict[int, tuple[int, int]] = {}
++        self.temporary_counts: dict[int, int] = {}
++        # Requests that touch expert-backed storage must release that storage at
++        # completion instead of leaving it owned by the radix prefix cache.
++        self.uncached_reqs: set[int] = set()
+ 
+     @property
+     def available_size(self):
+         available = self.allocator.available_blocks + self.prefix_cache.size_info.evictable_size
+         controller = self.manager.controller
+         if not controller.check_stop_moe_eviction():
+-            available += sum(
+-                capacity
+-                for key, capacity in self.manager.capacity_blocks.items()
+-                if controller.residency.state(key) is ExpertResidencyState.GPU_RESIDENT
+-            )
++            available += self.manager.admission_eviction_capacity_blocks
+         # Admission reserves future decode space; actual eviction occurs in _allocate.
+         return available
+ 
+     def _allocate(self, needed_pages):
++        # The normal overlap path may reclaim idle radix entries, but it must
++        # never synchronize the engine or evict a new expert.  Escalate that
++        # decision to Scheduler.overlap_loop, which can first retire the
++        # previous batch and recompute the shortfall.
++        available_with_radix = (
++            self.allocator.available_blocks
++            + self.prefix_cache.size_info.evictable_size
++        )
++        if needed_pages > available_with_radix:
++            raise ExpertEvictionRequired(needed_pages)
+         missing = needed_pages - self.allocator.available_blocks
+         if missing > 0:
+-            evictable = self.prefix_cache.size_info.evictable_size
+-            if evictable:
+-                self._release(self.prefix_cache.evict(min(missing, evictable)))
+-        while needed_pages > self.allocator.available_blocks:
+-            plan = self.manager.plan_evictions(needed_pages)
+-            if not plan.experts:
+-                raise MemoryError("KV demand exceeds the allowed expert candidates")
+-            key = plan.experts[0].key
+-            # This mode runs between completed batches on the engine stream.
+-            # route_to_cpu happens before storage is exposed for KV writes.
+-            self.manager.begin_eviction(key)
+-            self.manager.complete_eviction(key)
+-            logger.info_rank0("KV-MoE evict layer=%d expert=%d", *key)
++            self._release(self.prefix_cache.evict(missing))
+         blocks = self.allocator.allocate(needed_pages)
++        self._last_allocation_temporary = tuple(
++            block.region_id != self.allocator.PERSISTENT_REGION_ID for block in blocks
++        )
+         ids = [self.pool.slot_id(block) for block in blocks]
++        self._last_allocation_ids = tuple(ids)
+         self.live.update(zip(ids, blocks))
+         return torch.tensor(ids, dtype=torch.int32, device=self.device)
+ 
++    def evict_for_batch(self, needed_pages: int) -> int:
++        """Slow path: reclaim completed work, then evict the coldest prefix."""
++        missing = needed_pages - self.allocator.available_blocks
++        if missing > 0:
++            evictable = self.prefix_cache.size_info.evictable_size
++            if evictable:
++                self._release(self.prefix_cache.evict(min(missing, evictable)))
++        if needed_pages <= self.allocator.available_blocks:
++            return 0
++
++        # Only the slow path may wait for copies. Finish FETCHING before
++        # rebuilding the coldest-first plan so a colder fetching expert is
++        # never skipped in favour of a warmer GPU-resident candidate.
++        for event in self.manager.fetch_events.values():
++            event.synchronize()
++        self.manager.poll_restorations()
++        plan = self.manager.plan_evictions(needed_pages)
++        if plan.experts:
++            self.manager.evict_many(tuple(entry.key for entry in plan.experts))
++            for entry in plan.experts:
++                logger.info_rank0(
++                    "KV-MoE evict layer=%d expert=%d frequency=%.9f",
++                    entry.layer_id,
++                    entry.expert_id,
++                    entry.activation_frequency,
++                )
++        if plan.remaining_shortfall_blocks:
++            raise ExpertCapacityExhausted(
++                f"Batch needs {needed_pages} KV pages; configured expert prefix "
++                f"still lacks {plan.remaining_shortfall_blocks} pages"
++            )
++        return len(plan.experts)
++
++    def fit_decode_reqs(self, reqs):
++        """Return the largest ordered decode subset that fits current space."""
++        budget = (
++            self.allocator.available_blocks
++            + self.prefix_cache.size_info.evictable_size
++        )
++        selected = []
++        used = 0
++        for req in reqs:
++            first_page = div_ceil(req.cached_len, self.page_size)
++            last_page = div_ceil(req.device_len, self.page_size)
++            cost = max(0, last_page - first_page)
++            if used + cost > budget:
++                continue
++            selected.append(req)
++            used += cost
++        return selected
++
++    def allocate_paged(self, reqs) -> None:
++        needed_pages = 0
++        allocation_info = []
++        for req in reqs:
++            first_page = div_ceil(req.cached_len, self.page_size)
++            last_page = div_ceil(req.device_len, self.page_size)
++            if last_page > first_page:
++                needed_pages += last_page - first_page
++                allocation_info.append((req, req.table_idx, first_page, last_page))
++        if needed_pages == 0:
++            self.manager.flush_pending_restorations()
++            return
++
++        allocated = self._page_to_token(self._allocate(needed_pages))
++        flags = self._last_allocation_temporary
++        ids = self._last_allocation_ids
++        offset = 0
++        for req, table_idx, first_page, last_page in allocation_info:
++            count = last_page - first_page
++            if any(flags[offset : offset + count]):
++                self.uncached_reqs.add(req.uid)
++            for index in range(count):
++                allocation_index = offset + index
++                if flags[allocation_index]:
++                    self.temporary_locations[ids[allocation_index]] = (
++                        table_idx,
++                        first_page + index,
++                    )
++                    self.temporary_counts[table_idx] = (
++                        self.temporary_counts.get(table_idx, 0) + 1
++                    )
++            offset += count
++        _write_page_table(
++            self.page_table,
++            allocated,
++            [(table_idx, first, last) for _, table_idx, first, last in allocation_info],
++            self.page_size,
++        )
++        # Releases enqueue restoration candidates.  Only fetch experts that the
++        # just-completed allocation did not reuse.
++        self.manager.flush_pending_restorations()
++
+     def _release(self, indices):
+         ids = indices.tolist()
+         if not ids:
+             return
+         blocks = [self.live[slot] for slot in ids]
+-        self.allocator.release(blocks)  # Eager fetch-back runs inside this release.
++        for slot in ids:
++            location = self.temporary_locations.pop(slot, None)
++            if location is not None:
++                self._decrement_temporary_count(location[0])
++        self.allocator.release(blocks)  # Empty experts become deferred candidates.
+         for slot in ids:
+             del self.live[slot]
+ 
+     def _free(self, indices):
+         self._release(indices)
+ 
++    def cache_req(self, req, *, finished: bool) -> None:
++        page_indices = self.page_table[req.table_idx, : req.cached_len]
++        if req.uid not in self.uncached_reqs:
++            return super().cache_req(req, finished=finished)
++
++        if not finished:
++            # Keep the prefix handle that was matched before admission locked.
++            # All newly allocated tail slots remain owned directly by the req.
++            return
++
++        old_handle = req.cache_handle
++        self.unlock(old_handle)
++        self._free(page_indices[old_handle.cached_len :])
++        self.uncached_reqs.discard(req.uid)
++
++    def uses_temporary(self, req) -> bool:
++        return self.temporary_counts.get(req.table_idx, 0) > 0
++
++    def _decrement_temporary_count(self, table_idx: int) -> None:
++        remaining = self.temporary_counts[table_idx] - 1
++        if remaining:
++            self.temporary_counts[table_idx] = remaining
++        else:
++            del self.temporary_counts[table_idx]
++
+     @contextmanager
+-    def lazy_free_region(self):
++    def lazy_free_region(self, *, flush_restorations: bool = True):
+         # Batch releases so an expert shared by several requests restores once.
+         pending = []
+         self._free = pending.append
+@@ -76,6 +214,14 @@ class ExpertCacheManager(CacheManager):
+             del self._free
+             if pending:
+                 self._release(torch.cat(pending))
++            if flush_restorations:
++                self.manager.flush_pending_restorations()
++
++    def flush_pending_restorations(self) -> None:
++        self.manager.flush_pending_restorations()
++
++    def poll_restorations(self) -> int:
++        return self.manager.poll_restorations()
+ 
+     def check_integrity(self):
+         self.prefix_cache.check_integrity()
+diff --git a/python/minisgl/scheduler/prefill.py b/python/minisgl/scheduler/prefill.py
+index 3ffe3a5..18de252 100644
+--- a/python/minisgl/scheduler/prefill.py
++++ b/python/minisgl/scheduler/prefill.py
+@@ -43,7 +43,11 @@ class PrefillAdder:
+         # TODO: consider host cache match case
+         handle = self.cache_manager.match_req(req).cuda_handle
+         cached_len = handle.cached_len
+-        # TODO: better estimate policy
++        # Admission safety is intentionally more conservative than eviction
++        # demand: reserve the request's remaining lifetime so already-admitted
++        # decodes can always make progress. This is only an admission gate; it
++        # neither allocates pages nor triggers expert eviction. The allocator's
++        # slow path still uses only the selected batch's actual page demand.
+         extend_len = req.input_len - cached_len
+         estimated_len = extend_len + req.output_len
+ 
+@@ -127,6 +131,9 @@ class PrefillManager:
+         if len(self.pending_list) == 0:
+             return None
+ 
++        pending_before = self.pending_list
++        snapshot = []
++
+         # estimated offset due to in-flight decode
+         adder = PrefillAdder(
+             token_budget=prefill_budget,
+@@ -137,7 +144,9 @@ class PrefillManager:
+         reqs: List[Req] = []
+         chunked_list: List[PendingReq] = []
+         for pending_req in self.pending_list:
++            previous_chunk = pending_req.chunked_req
+             if req := adder.try_add_one(pending_req):
++                snapshot.append((pending_req, previous_chunk))
+                 pending_req.chunked_req = None
+                 if isinstance(req, ChunkedReq):
+                     pending_req.chunked_req = req
+@@ -147,9 +156,22 @@ class PrefillManager:
+                 break  # We cannot add more requests
+         if len(reqs) == 0:
+             return None
+-        self.pending_list = chunked_list + self.pending_list[len(reqs) :]
++        self.pending_list = chunked_list + self.pending_list[len(reqs):]
++        self._selection_snapshot = (pending_before, snapshot)
+         return Batch(reqs=reqs, phase="prefill")
+ 
++    def defer_selected_batch(self, batch: Batch) -> None:
++        """Roll back admission when the real KV allocation cannot be satisfied."""
++        pending_before, snapshot = self._selection_snapshot
++        previously_chunked = {pending.uid for pending, chunk in snapshot if chunk is not None}
++        for req in batch.reqs:
++            if req.uid not in previously_chunked:
++                self.cache_manager.unlock(req.cache_handle)
++                self.table_manager.free(req.table_idx)
++        self.pending_list = pending_before
++        for pending, chunk in snapshot:
++            pending.chunked_req = chunk
++
+     def abort_req(self, uid: int) -> Req | None:
+         for i, req in enumerate(self.pending_list):
+             if req.uid == uid:
+diff --git a/python/minisgl/scheduler/scheduler.py b/python/minisgl/scheduler/scheduler.py
+index b6e613d..a873099 100644
+--- a/python/minisgl/scheduler/scheduler.py
++++ b/python/minisgl/scheduler/scheduler.py
+@@ -94,6 +94,12 @@ class Scheduler(SchedulerIOMixin):
+     def run_when_idle(self) -> None:
+         """Called when the scheduler is idle to perform background tasks."""
+         logger.info_rank0("Scheduler is idle, waiting for new reqs...")
++        flush = getattr(self.cache_manager, "flush_pending_restorations", None)
++        if flush is not None:
++            flush()
++        poll = getattr(self.cache_manager, "poll_restorations", None)
++        if poll is not None:
++            poll()
+         self.cache_manager.check_integrity()
+ 
+     def overlap_loop(self, last_data: ForwardData | None) -> ForwardData | None:
+@@ -107,11 +113,79 @@ class Scheduler(SchedulerIOMixin):
+             last_data is not None  # don't block if we have a batch to be processed
+             or self.prefill_manager.runnable
+             or self.decode_manager.runnable
++            or (self.engine.expert_memory is not None and self.engine.expert_memory.fetch_events)
+         )
+         for msg in self.receive_msg(blocking=blocking):
+             self._process_one_msg(msg)
+ 
+-        forward_input = self._schedule_next_batch()
++        batch = self._select_next_batch()
++        if self.engine.expert_memory is not None and self.engine.expert_memory.fetch_events:
++            # KT callbacks read host masks. Publish only after previous callbacks
++            # finish on every rank, without waiting for the copy itself.
++            ready = self.engine.kt_backend.agree_fetch_completion([
++                last_data is None or last_data[1].copy_done_event.query()
++            ])[0]
++            if ready:
++                self.cache_manager.poll_restorations()
++        forward_input = None
++        if batch is not None:
++            try:
++                forward_input = self._prepare_batch(batch)
++            except Exception as exc:
++                from .expert_cache import ExpertEvictionRequired
++
++                if not isinstance(exc, ExpertEvictionRequired):
++                    raise
++                logger.info_rank0(
++                    "KV-MoE eviction slow path: batch needs %d pages; "
++                    "retiring previous batch first",
++                    exc.needed_pages,
++                )
++                # The slow path deliberately breaks overlap. Retire and free
++                # the previous batch before deciding whether eviction is still
++                # necessary. Do not start fetches until the pending batch has
++                # had a chance to reserve the newly empty buffers.
++                self._process_last_data(last_data, flush_restorations=False)
++                last_data = None
++                # No engine work is in flight now. Completed fetches may safely
++                # publish both their KT host mask and GPU mask before retrying
++                # this batch. Normal overlap deliberately does not commit here.
++                poll = getattr(self.cache_manager, "poll_restorations", None)
++                if poll is not None:
++                    poll()
++                if batch.is_decode:
++                    batch = Batch(
++                        reqs=[req for req in batch.reqs if req in self.decode_manager.running_reqs],
++                        phase="decode",
++                    )
++                if batch.reqs:
++                    try:
++                        forward_input = self._prepare_batch(batch)
++                    except ExpertEvictionRequired as retry:
++                        from .expert_cache import ExpertCapacityExhausted
++
++                        try:
++                            self.cache_manager.evict_for_batch(retry.needed_pages)
++                            forward_input = self._prepare_batch(batch)
++                        except ExpertCapacityExhausted:
++                            if not batch.is_decode:
++                                self.prefill_manager.defer_selected_batch(batch)
++                                batch = self.decode_manager.schedule_next_batch()
++                                if batch is None:
++                                    self.cache_manager.flush_pending_restorations()
++                                    return None
++                            selected = self.cache_manager.fit_decode_reqs(batch.reqs)
++                            logger.info_rank0(
++                                "KV-MoE capacity ceiling: scheduling %d/%d decode "
++                                "requests and deferring the remainder",
++                                len(selected),
++                                len(batch.reqs),
++                            )
++                            if selected:
++                                batch = Batch(reqs=selected, phase="decode")
++                                forward_input = self._prepare_batch(batch)
++                else:
++                    self.cache_manager.flush_pending_restorations()
+         ongoing_data = None
+         if forward_input is not None:
+             with self.engine_stream_ctx:  # run the batch in the engine's stream
+@@ -123,6 +197,9 @@ class Scheduler(SchedulerIOMixin):
+ 
+     def normal_loop(self) -> None:
+         blocking = not (self.prefill_manager.runnable or self.decode_manager.runnable)
++        if self.engine.expert_memory is not None and self.engine.expert_memory.fetch_events:
++            blocking = False
++            self.cache_manager.poll_restorations()
+         for msg in self.receive_msg(blocking=blocking):
+             self._process_one_msg(msg)
+ 
+@@ -151,7 +228,12 @@ class Scheduler(SchedulerIOMixin):
+         self.sync_all_ranks()
+         self.engine.shutdown()
+ 
+-    def _process_last_data(self, last_data: ForwardData | None) -> None:
++    def _process_last_data(
++        self,
++        last_data: ForwardData | None,
++        *,
++        flush_restorations: bool = True,
++    ) -> None:
+         if last_data is None:
+             return
+ 
+@@ -160,7 +242,9 @@ class Scheduler(SchedulerIOMixin):
+         batch_done_time = time.perf_counter()
+         reply: List[DetokenizeMsg] = []
+         new_finished_reqs: Set[Req] = set()
+-        with self.cache_manager.lazy_free_region():
++        with self.cache_manager.lazy_free_region(
++            flush_restorations=flush_restorations
++        ):
+             for i, req in enumerate(batch.reqs):
+                 if isinstance(req, ChunkedReq):
+                     continue
+@@ -257,8 +341,21 @@ class Scheduler(SchedulerIOMixin):
+         )
+ 
+     def _prepare_batch(self, batch: Batch) -> ForwardInput:
+-        self.engine.graph_runner.pad_batch(batch)
++        # Allocation can request the eviction slow path and therefore must be
++        # the first mutating preparation step.
+         self.cache_manager.allocate_paged(batch.reqs)
++        self.engine.graph_runner.pad_batch(batch)
++        if hasattr(self.cache_manager, "uses_temporary"):
++            temporary_flags = [
++                self.cache_manager.uses_temporary(req) for req in batch.reqs
++            ]
++            for req, uses_temporary in zip(batch.reqs, temporary_flags):
++                req.uses_temporary_kv = uses_temporary
++            batch.uses_temporary_kv = any(temporary_flags)
++        else:
++            for req in batch.reqs:
++                req.uses_temporary_kv = False
++            batch.uses_temporary_kv = False
+         batch.positions = _make_positions(batch, self.device)
+         input_mapping = _make_input_tuple(batch, self.device)
+         write_mapping = _make_write_tuple(batch, self.device)
+@@ -271,13 +368,36 @@ class Scheduler(SchedulerIOMixin):
+             write_tuple=write_mapping,
+         )
+ 
+-    def _schedule_next_batch(self) -> ForwardInput | None:
++    def _select_next_batch(self) -> Batch | None:
+         # TODO: support other policies: e.g. DECODE first
+-        batch = (
++        return (
+             self.prefill_manager.schedule_next_batch(self.prefill_budget)
+             or self.decode_manager.schedule_next_batch()
+         )
+-        return self._prepare_batch(batch) if batch else None
++
++    def _schedule_next_batch(self) -> ForwardInput | None:
++        batch = self._select_next_batch()
++        if batch is None:
++            return None
++        if self.engine.expert_memory is not None:
++            from .expert_cache import ExpertCapacityExhausted, ExpertEvictionRequired
++            self.cache_manager.poll_restorations()
++            try:
++                return self._prepare_batch(batch)
++            except ExpertEvictionRequired as exc:
++                try:
++                    self.cache_manager.evict_for_batch(exc.needed_pages)
++                except ExpertCapacityExhausted:
++                    if not batch.is_decode:
++                        self.prefill_manager.defer_selected_batch(batch)
++                        batch = self.decode_manager.schedule_next_batch()
++                    if batch is None:
++                        return None
++                    selected = self.cache_manager.fit_decode_reqs(batch.reqs)
++                    if not selected:
++                        return None
++                    batch = Batch(reqs=selected, phase="decode")
++        return self._prepare_batch(batch)
+ 
+     def _forward(self, forward_input: ForwardInput) -> ForwardOutput:
+         batch, sample_args, input_mapping, output_mapping = forward_input
+diff --git a/python/minisgl/server/args.py b/python/minisgl/server/args.py
+index ac953cf..e6217f0 100644
+--- a/python/minisgl/server/args.py
++++ b/python/minisgl/server/args.py
+@@ -69,14 +69,59 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
+     parser.add_argument(
+         "--expert-profile",
+         default=None,
+-        help="Enable single-GPU BF16 Qwen3 MoE memory sharing using this candidate file.",
++        help="Sorted cold-to-hot expert profile used for static CPU placement.",
+     )
+     parser.add_argument(
++        "--max-offload-experts-num",
++        "--max_offload_experts_num",
++        dest="max_offload_experts_num",
++        type=int,
++        default=ServerArgs.max_offload_experts_num,
++        help="Number of coldest profile experts permanently placed on CPU.",
++    )
++    parser.add_argument(
++        "--kt-weight-path",
+         "--kt-gguf-path",
++        dest="kt_weight_path",
+         default=None,
+-        help="GGUF file or directory used by KT for CPU experts. GPU weights still use --model-path.",
++        help="CPU expert weight file or directory used by KTransformers. "
++        "--kt-gguf-path is retained as a compatibility alias.",
++    )
++    parser.add_argument(
++        "--kt-cpuinfer",
++        "--kt-cpu-threads",
++        dest="kt_cpuinfer",
++        type=int,
++        default=ServerArgs.kt_cpuinfer,
++        help="Number of CPU inference threads. --kt-cpu-threads is a compatibility alias.",
++    )
++    parser.add_argument(
++        "--kt-threadpool-count",
++        type=int,
++        default=ServerArgs.kt_threadpool_count,
++        help="Number of KTransformers CPU worker pools.",
++    )
++    parser.add_argument(
++        "--kt-method",
++        choices=[
++            "AMXINT4",
++            "AMXINT8",
++            "RAWINT4",
++            "FP8",
++            "FP8_PERCHANNEL",
++            "BF16",
++            "LLAMAFILE",
++        ],
++        default=ServerArgs.kt_method,
++        help="KTransformers CPU inference backend. Inferred as LLAMAFILE for an "
++        "explicit weight path and BF16 otherwise when omitted.",
++    )
++    parser.add_argument(
++        "--kt-max-deferred-experts-per-token",
++        type=int,
++        default=ServerArgs.kt_max_deferred_experts_per_token,
++        help="Number of CPU experts per token deferred for pipelined execution.",
+     )
+-    parser.add_argument("--kt-cpu-threads", type=int, default=ServerArgs.kt_cpu_threads)
+ 
+     parser.add_argument(
+         "--model-path",
+@@ -246,8 +291,8 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
+ 
+     if kwargs["model_path"].startswith("~"):
+         kwargs["model_path"] = os.path.expanduser(kwargs["model_path"])
+-    if kwargs["kt_gguf_path"] and kwargs["kt_gguf_path"].startswith("~"):
+-        kwargs["kt_gguf_path"] = os.path.expanduser(kwargs["kt_gguf_path"])
++    if kwargs["kt_weight_path"] and kwargs["kt_weight_path"].startswith("~"):
++        kwargs["kt_weight_path"] = os.path.expanduser(kwargs["kt_weight_path"])
+ 
+     if kwargs["model_source"] == "modelscope":
+         model_path = kwargs["model_path"]
+diff --git a/python/minisgl/server/launch.py b/python/minisgl/server/launch.py
+index 2e9c2f1..09b0f74 100644
+--- a/python/minisgl/server/launch.py
++++ b/python/minisgl/server/launch.py
+@@ -22,7 +22,12 @@ def _run_scheduler(args: ServerArgs, ack_queue: mp.Queue[str]) -> None:
+         scheduler.sync_all_ranks()
+ 
+         if args.tp_info.is_primary():
+-            ack_queue.put("Scheduler is ready")
++            kv_capacity_tokens = scheduler.engine.num_pages * args.page_size
++            ack_queue.put(
++                "Scheduler is ready; "
++                f"KV cache capacity: {kv_capacity_tokens:,} tokens "
++                f"({scheduler.engine.num_pages:,} pages x {args.page_size} token/page)"
++            )
+ 
+         if args.silent_output:
+             logging.disable(logging.INFO)
+diff --git a/tests/core/test_expert_attention_graph.py b/tests/core/test_expert_attention_graph.py
+index 006149f..2a0ca9f 100644
+--- a/tests/core/test_expert_attention_graph.py
++++ b/tests/core/test_expert_attention_graph.py
+@@ -21,7 +21,7 @@ def test_capture_buffers_receive_dynamic_decode_metadata(monkeypatch) -> None:
+     import minisgl.core as core
+ 
+     ctx = Context(page_size=1)
+-    ctx.kv_cache = SimpleNamespace(device=torch.device("cpu"))
++    ctx.kv_cache = SimpleNamespace(device=torch.device("cpu"), heads=2)
+     ctx.page_table = torch.arange(32, dtype=torch.int32).view(4, 8)
+     monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
+ 
+diff --git a/tests/core/test_expert_cache.py b/tests/core/test_expert_cache.py
+index 68a6c17..b5f2563 100644
+--- a/tests/core/test_expert_cache.py
++++ b/tests/core/test_expert_cache.py
+@@ -6,7 +6,7 @@ from minisgl.kvcache.unified import TemporaryKVRegion, UnifiedKVAllocator
+ from minisgl.moe.memory import ExpertMemoryManager
+ from minisgl.moe.offload import ExpertEvictionProfile, ExpertOffloadController, ExpertProfileEntry
+ from minisgl.moe.storage import ExpertStorage, ExpertStorageCatalog
+-from minisgl.scheduler.expert_cache import ExpertCacheManager
++from minisgl.scheduler.expert_cache import ExpertCacheManager, ExpertEvictionRequired
+ 
+ 
+ @pytest.mark.parametrize("cache_type", ["naive", "radix"])
+@@ -39,10 +39,14 @@ def test_admission_eviction_release_and_reuse(monkeypatch, cache_type):
+     cache = ExpertCacheManager(pool, manager, torch.zeros(1, 8, dtype=torch.int32), cache_type)
+     assert cache.available_size == 5
+     assert events == []  # Merely inspecting admission capacity must not evict.
++    with pytest.raises(ExpertEvictionRequired):
++        cache._allocate(5)
++    assert events == []
++    cache.evict_for_batch(5)
+     blocks = cache._allocate(5)
+     assert events == ["cpu"]
+     assert set(blocks.tolist()) == {0, 1, 3, 4, 5}  # Slot 2 is the dummy page.
+-    with pytest.raises(MemoryError):
++    with pytest.raises(ExpertEvictionRequired):
+         cache._allocate(1)
+     if cache_type == "radix":
+         cache.prefix_cache.insert_prefix(torch.arange(3, dtype=torch.int32), blocks[2:])
+@@ -50,11 +54,193 @@ def test_admission_eviction_release_and_reuse(monkeypatch, cache_type):
+         assert events == ["cpu"]  # Prefix ownership keeps the expert on CPU.
+         cache.check_integrity()
+         cache._release(cache.prefix_cache.evict(3))
++        cache.flush_pending_restorations()
+     else:
+         with cache.lazy_free_region():
+             cache._free(blocks[:3])
+             cache._free(blocks[3:])
+     assert events == ["cpu", "copy", "gpu"]
+     cache.check_integrity()
++    cache.evict_for_batch(5)
+     cache._free(cache._allocate(5))
++    cache.flush_pending_restorations()
+     assert events == ["cpu", "copy", "gpu"] * 2
++
++
++def test_finished_request_does_not_pin_expert_storage_in_radix_cache(monkeypatch):
++    import minisgl.core as core
++    import minisgl.distributed.info as info
++    from minisgl.distributed import set_tp_info
++
++    monkeypatch.setattr(info, "_TP_INFO", None)
++    monkeypatch.setattr(core, "_GLOBAL_CTX", core.Context(page_size=1))
++    set_tp_info(0, 1)
++    allocator = UnifiedKVAllocator(2, 16)
++    gate = TemporaryKVRegion("gate", (0, 0), 32, 16)
++    down = TemporaryKVRegion("down", (0, 0), 16, 16)
++    allocator.register_temporary_region(gate)
++    allocator.register_temporary_region(down)
++    catalog = ExpertStorageCatalog([ExpertStorage(0, 0, 0.1, None, None, gate, down)])
++    events = []
++    backend = SimpleNamespace(
++        route_to_cpu=lambda key: events.append("cpu"),
++        restore_weights=lambda key: events.append("copy"),
++        route_to_gpu=lambda key: events.append("gpu"),
++    )
++    profile = ExpertEvictionProfile([ExpertProfileEntry(0, 0, 0.1)])
++    manager = ExpertMemoryManager(
++        ExpertOffloadController(profile), catalog, allocator, backend
++    )
++    starts = {"persistent": 0, "gate": 3, "down": 5}
++    pool = SimpleNamespace(
++        allocator=allocator,
++        slot_id=lambda block: starts[block.region_id] + block.local_block_id,
++    )
++    page_table = torch.zeros(1, 8, dtype=torch.int32)
++    cache = ExpertCacheManager(pool, manager, page_table, "radix")
++    root_handle = cache.prefix_cache.match_prefix(
++        torch.empty(0, dtype=torch.int32)
++    ).cuda_handle
++    req = SimpleNamespace(
++        uid=7,
++        table_idx=0,
++        cached_len=0,
++        device_len=5,
++        cache_handle=root_handle,
++        input_ids=torch.arange(5, dtype=torch.int32),
++    )
++
++    cache.evict_for_batch(5)
++    cache.allocate_paged([req])
++    req.cached_len = 5
++    cache.cache_req(req, finished=False)
++    assert events == ["cpu"]
++    assert cache.prefix_cache.size_info.total_size == 0
++    cache.cache_req(req, finished=True)
++    cache.flush_pending_restorations()
++
++    assert events == ["cpu", "copy", "gpu"]
++    assert cache.prefix_cache.size_info.total_size == 0
++    assert not cache.live
++    cache.check_integrity()
++
++
++def test_temporary_kv_stays_in_place_when_persistent_slots_are_released(monkeypatch):
++    import minisgl.core as core
++    import minisgl.distributed.info as info
++    from minisgl.distributed import set_tp_info
++
++    monkeypatch.setattr(info, "_TP_INFO", None)
++    monkeypatch.setattr(core, "_GLOBAL_CTX", core.Context(page_size=1))
++    set_tp_info(0, 1)
++    allocator = UnifiedKVAllocator(2, 16)
++    gate = TemporaryKVRegion("gate", (0, 0), 32, 16)
++    down = TemporaryKVRegion("down", (0, 0), 16, 16)
++    allocator.register_temporary_region(gate)
++    allocator.register_temporary_region(down)
++    catalog = ExpertStorageCatalog([ExpertStorage(0, 0, 0.1, None, None, gate, down)])
++    events = []
++    backend = SimpleNamespace(
++        route_to_cpu=lambda key: events.append("cpu"),
++        restore_weights=lambda key: events.append("copy"),
++        route_to_gpu=lambda key: events.append("gpu"),
++    )
++    manager = ExpertMemoryManager(
++        ExpertOffloadController(
++            ExpertEvictionProfile([ExpertProfileEntry(0, 0, 0.1)])
++        ),
++        catalog,
++        allocator,
++        backend,
++    )
++    starts = {"persistent": 0, "gate": 3, "down": 5}
++    copies = []
++    pool = SimpleNamespace(
++        allocator=allocator,
++        slot_id=lambda block: starts[block.region_id] + block.local_block_id,
++        copy_slots=lambda sources, destinations: copies.append(
++            (sources.tolist(), destinations.tolist())
++        ),
++    )
++    page_table = torch.zeros(1, 8, dtype=torch.int32)
++    cache = ExpertCacheManager(pool, manager, page_table, "radix")
++    handle = cache.prefix_cache.match_prefix(
++        torch.empty(0, dtype=torch.int32)
++    ).cuda_handle
++    req = SimpleNamespace(
++        uid=9,
++        table_idx=0,
++        cached_len=0,
++        device_len=5,
++        cache_handle=handle,
++        input_ids=torch.arange(5, dtype=torch.int32),
++    )
++
++    cache.evict_for_batch(5)
++    cache.allocate_paged([req])
++    assert events == ["cpu"]
++    assert set(cache.temporary_locations) == {3, 4, 5}
++    assert cache.uses_temporary(req)
++
++    cache._release(torch.tensor([0, 1], dtype=torch.int32))
++    cache.flush_pending_restorations()
++    assert copies == []
++    assert page_table[0, 2:5].tolist() == [3, 4, 5]
++    assert set(cache.temporary_locations) == {3, 4, 5}
++    assert cache.temporary_counts == {0: 3}
++    assert events == ["cpu"]
++
++    cache._release(torch.tensor([3, 4, 5], dtype=torch.int32))
++    cache.flush_pending_restorations()
++    assert copies == []
++    assert not cache.temporary_locations
++    assert not cache.uses_temporary(req)
++    assert events == ["cpu", "copy", "gpu"]
++
++
++def test_prefix_eviction_does_not_migrate_into_slots_needed_by_allocation(monkeypatch):
++    import minisgl.core as core
++    import minisgl.distributed.info as info
++    from minisgl.distributed import set_tp_info
++
++    monkeypatch.setattr(info, "_TP_INFO", None)
++    monkeypatch.setattr(core, "_GLOBAL_CTX", core.Context(page_size=1))
++    set_tp_info(0, 1)
++    allocator = UnifiedKVAllocator(2, 16)
++    gate = TemporaryKVRegion("gate", (0, 0), 32, 16)
++    down = TemporaryKVRegion("down", (0, 0), 16, 16)
++    allocator.register_temporary_region(gate)
++    allocator.register_temporary_region(down)
++    catalog = ExpertStorageCatalog([ExpertStorage(0, 0, 0.1, None, None, gate, down)])
++    backend = SimpleNamespace(
++        route_to_cpu=lambda key: None,
++        restore_weights=lambda key: None,
++        route_to_gpu=lambda key: None,
++    )
++    manager = ExpertMemoryManager(
++        ExpertOffloadController(ExpertEvictionProfile([ExpertProfileEntry(0, 0, 0.1)])),
++        catalog,
++        allocator,
++        backend,
++    )
++    copies = []
++    pool = SimpleNamespace(
++        allocator=allocator,
++        slot_id=lambda block: {"persistent": 0, "gate": 3, "down": 5}[block.region_id]
++        + block.local_block_id,
++        copy_slots=lambda sources, destinations: copies.append((sources, destinations)),
++    )
++    cache = ExpertCacheManager(pool, manager, torch.zeros(1, 8, dtype=torch.int32), "radix")
++    cache.evict_for_batch(5)
++    blocks = cache._allocate(5)
++    cache.prefix_cache.insert_prefix(
++        torch.tensor([11, 12], dtype=torch.int32), blocks[:2]
++    )
++    cache.temporary_locations[blocks[2].item()] = (0, 2)
++    cache.page_table[0, 2] = blocks[2]
++
++    allocated = cache._allocate(1)
++    assert allocated.item() in (0, 1)
++    assert copies == []
++    assert blocks[2].item() in cache.temporary_locations
++    assert manager.available_gpu_capacity_blocks == 0
+diff --git a/tests/core/test_expert_memory_manager.py b/tests/core/test_expert_memory_manager.py
+index 305fdc8..d52dc98 100644
+--- a/tests/core/test_expert_memory_manager.py
++++ b/tests/core/test_expert_memory_manager.py
+@@ -62,12 +62,14 @@ def _manager() -> ExpertMemoryManager:
+ 
+ def test_execution_switch_precedes_storage_reuse() -> None:
+     manager = _manager()
++    assert manager.available_gpu_capacity_blocks == 5
+     assert [entry.key for entry in manager.plan_evictions(4).experts] == [(0, 0)]
+     manager.begin_eviction((0, 0))
+     assert manager.backend.events == [("cpu", (0, 0))]
+     assert manager.allocator.temporary_available_blocks == 0
+     manager.complete_eviction((0, 0))
+     assert manager.allocator.temporary_available_blocks == 3
++    assert manager.available_gpu_capacity_blocks == 2
+ 
+ 
+ def test_transition_barrier_orders_eviction_and_restoration() -> None:
+@@ -78,34 +80,51 @@ def test_transition_barrier_orders_eviction_and_restoration() -> None:
+     manager.begin_eviction((0, 0))
+     manager.complete_eviction((0, 0))
+     manager.allocator.release(manager.allocator.allocate(3))
++    manager.flush_pending_restorations()
+ 
+     assert events == [
+         ("barrier", None),
+         ("cpu", (0, 0)),
+-        ("barrier", None),
+         ("copy", (0, 0)),
+         ("gpu", (0, 0)),
+     ]
+ 
+ 
+-def test_eager_restore_on_final_release_without_low_pressure_or_draining() -> None:
++def test_each_empty_expert_restores_after_allocation_phase() -> None:
+     manager = _manager()
+     for key in ((0, 0), (0, 1)):
+         manager.begin_eviction(key)
+         manager.complete_eviction(key)
+     blocks = manager.allocator.allocate(6)
+-    gate = manager.storage_catalog[(0, 0)].gate_up_region
+-    down = manager.storage_catalog[(0, 0)].down_region
+-    manager.allocator.release([b for b in blocks if b.region_id == gate.region_id])
++    regions0 = manager._regions((0, 0))
++    regions1 = manager._regions((0, 1))
++    manager.allocator.release(
++        [b for b in blocks if b.region_id in {r.region_id for r in regions0}]
++    )
+     assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.CPU_RESIDENT
+-    assert gate.state is TemporaryKVRegionState.ACTIVE
+-    # Colder expert restores first because its final KV was freed first.
+-    manager.allocator.release([b for b in blocks if b.region_id == down.region_id])
+-    assert manager.backend.events[-2:] == [("copy", (0, 0)), ("gpu", (0, 0))]
++    assert manager.controller.residency.state((0, 1)) is ExpertResidencyState.CPU_RESIDENT
++    assert all(region.state is TemporaryKVRegionState.ACTIVE for region in regions0)
++    manager.flush_pending_restorations()
+     assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.GPU_RESIDENT
+     assert manager.controller.residency.state((0, 1)) is ExpertResidencyState.CPU_RESIDENT
+-    assert gate.state is TemporaryKVRegionState.INACTIVE
+-    assert down.state is TemporaryKVRegionState.INACTIVE
++
++    manager.allocator.release(
++        [b for b in blocks if b.region_id in {r.region_id for r in regions1}]
++    )
++    manager.flush_pending_restorations()
++    assert manager.backend.events[-4:] == [
++        ("copy", (0, 0)),
++        ("gpu", (0, 0)),
++        ("copy", (0, 1)),
++        ("gpu", (0, 1)),
++    ]
++    assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.GPU_RESIDENT
++    assert manager.controller.residency.state((0, 1)) is ExpertResidencyState.GPU_RESIDENT
++    assert manager.available_gpu_capacity_blocks == 5
++    assert all(
++        region.state is TemporaryKVRegionState.INACTIVE
++        for region in (*regions0, *regions1)
++    )
+     assert manager.allocator.available_blocks == 0  # Persistent pool is still full.
+ 
+ 
+@@ -115,6 +134,7 @@ def test_never_used_sibling_does_not_prevent_eager_restore() -> None:
+     manager.complete_eviction((0, 0))
+     blocks = manager.allocator.allocate(2)  # Down region stays unused.
+     manager.allocator.release(blocks[1:])
++    manager.flush_pending_restorations()
+     assert manager.backend.events[-2:] == [("copy", (0, 0)), ("gpu", (0, 0))]
+ 
+ 
+@@ -126,6 +146,7 @@ def test_failed_copy_keeps_expert_on_cpu_and_regions_unavailable() -> None:
+     manager.backend.fail_restore = True
+     with pytest.raises(RuntimeError, match="copy failed"):
+         manager.allocator.release(blocks)
++        manager.flush_pending_restorations()
+     assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.RESTORING
+     assert manager.backend.events[-1] == ("copy", (0, 0))
+     assert manager.allocator.temporary_available_blocks == 0
+@@ -137,6 +158,7 @@ def test_same_expert_can_be_evicted_again_after_restoration() -> None:
+         manager.begin_eviction((0, 0))
+         manager.complete_eviction((0, 0))
+         manager.allocator.release(manager.allocator.allocate(4))
++        manager.flush_pending_restorations()
+         assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.GPU_RESIDENT
+     assert (
+         manager.backend.events
+@@ -147,3 +169,55 @@ def test_same_expert_can_be_evicted_again_after_restoration() -> None:
+         ]
+         * 2
+     )
++
++
++def test_reservation_prevents_fetch_until_final_release() -> None:
++    manager = _manager()
++    manager.begin_eviction((0, 0))
++    manager.complete_eviction((0, 0))
++    manager.allocator.release(manager.allocator.allocate(4))
++    reserved = manager.allocator.allocate(4)
++
++    assert manager.flush_pending_restorations() == 0
++    assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.CPU_RESIDENT
++    manager.allocator.release(reserved)
++    assert manager.flush_pending_restorations() == 1
++    assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.GPU_RESIDENT
++
++
++def test_admission_window_limits_promised_expert_capacity() -> None:
++    manager = _manager()
++    manager.max_offloaded_experts = 1
++    assert manager.admission_eviction_capacity_blocks == 3
++    assert [entry.key for entry in manager.plan_evictions(5).experts] == [(0, 0)]
++
++    manager.begin_eviction((0, 0))
++    manager.complete_eviction((0, 0))
++    assert manager.admission_eviction_capacity_blocks == 0
++    assert manager.plan_evictions(5).experts == ()
++
++
++def test_fetch_completion_requires_all_ranks_and_excludes_kv_allocations():
++    manager = _manager()
++    manager.begin_eviction((0, 0))
++    manager.complete_eviction((0, 0))
++    blocks = manager.allocator.allocate(4)
++    class Event:
++        ready = False
++        def query(self):
++            return self.ready
++    event = Event()
++    manager.backend.restore_weights = lambda _: event
++    manager.allocator.release(blocks[1:])
++    manager.flush_pending_restorations()
++    assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.RESTORING
++    assert manager.allocator.available_blocks == 0
++    with pytest.raises(MemoryError):
++        manager.allocator.allocate(1)
++    assert manager.poll_restorations() == 0
++    event.ready = True
++    manager.backend.agree_fetch_completion = lambda ready: [False]
++    assert manager.poll_restorations() == 0
++    manager.backend.agree_fetch_completion = lambda ready: ready
++    assert manager.poll_restorations() == 1
++    assert manager.controller.residency.state((0, 0)) is ExpertResidencyState.GPU_RESIDENT
+diff --git a/tests/core/test_expert_offload.py b/tests/core/test_expert_offload.py
+index 500eb4d..4532a1c 100644
+--- a/tests/core/test_expert_offload.py
++++ b/tests/core/test_expert_offload.py
+@@ -35,6 +35,24 @@ def test_real_profile_matches_documented_shape_and_order() -> None:
+     assert profile.entries[-1].key == (0, 117)
+ 
+ 
++def test_full_json_profile_and_cold_prefix() -> None:
++    path = Path(__file__).parents[2] / "30B_experts_frequency_sorted.json"
++    profile = ExpertEvictionProfile.from_file(path)
++
++    assert len(profile.entries) == 6144
++    assert profile.entries[0].key == (45, 97)
++    assert profile.entries[0].activation_frequency == pytest.approx(
++        3.179518096323107e-05
++    )
++
++    coldest = profile.prefix(192)
++    assert len(coldest.entries) == 192
++    assert coldest.entries == profile.entries[:192]
++    assert len(coldest.allowed_keys) == 192
++
++    assert profile.prefix(100).entries == profile.entries[:100]
++
++
+ def test_profile_rejects_unsorted_and_duplicate_entries() -> None:
+     with pytest.raises(ValueError, match="sorted"):
+         ExpertEvictionProfile(
+diff --git a/tests/core/test_graph_variant.py b/tests/core/test_graph_variant.py
+index 7b418d8..1f57136 100644
+--- a/tests/core/test_graph_variant.py
++++ b/tests/core/test_graph_variant.py
+@@ -25,21 +25,42 @@ def test_replay_switches_between_pure_and_hybrid_graphs(monkeypatch) -> None:
+ 
+     monkeypatch.setattr(graph_module.logger, "info_rank0", lambda *args: None)
+     state = {"hybrid": False}
+-    pure, hybrid = _Graph(), _Graph()
++    pure, moe, hybrid = _Graph(), _Graph(), _Graph()
+     runner = GraphRunner.__new__(GraphRunner)
+     runner.max_graph_bs = 1
+     runner.buffer = _Buffer()
+     runner.graph_map = {1: pure}
+     runner.hybrid_graph_map = {1: hybrid}
++    runner.moe_graph_map = {1: moe}
+     runner.use_hybrid_graph = lambda: state["hybrid"]
+     runner._logged_replay_variants = set()
+     runner.attn_backend = SimpleNamespace(prepare_for_replay=lambda batch: None)
+-    batch = SimpleNamespace(is_decode=True, size=1, padded_size=1)
++    batch = SimpleNamespace(is_decode=True, size=1, padded_size=1,
++                            attn_metadata=SimpleNamespace(attention_hybrid=False))
+ 
+     torch.testing.assert_close(runner.replay(batch), torch.ones((1, 2)))
+     assert (pure.replays, hybrid.replays) == (1, 0)
+ 
+     state["hybrid"] = True
+     runner.replay(batch)
++    assert (pure.replays, moe.replays, hybrid.replays) == (1, 1, 0)
++    batch.attn_metadata.attention_hybrid = True
++    runner.replay(batch)
+     assert (pure.replays, hybrid.replays) == (1, 1)
+-    assert runner._logged_replay_variants == {"pure-gpu", "hybrid"}
++    assert runner._logged_replay_variants == {"pure-gpu", "moe-hybrid", "kv+moe-hybrid"}
++
++
++def test_hybrid_avoids_dummy_moe_work_without_changing_pure_padding():
++    runner = GraphRunner.__new__(GraphRunner)
++    runner.max_graph_bs = 96
++    runner.graph_bs_list = [1, 2, 4, 8, 16, 24, 32, 40, 48, 96]
++    runner.hybrid_bs_list = list(range(1, 97))
++    runner.dummy_req = object()
++    state = {"hybrid": False}
++    runner.use_hybrid_graph = lambda: state["hybrid"]
++    batch = SimpleNamespace(is_decode=True, size=27, reqs=[object() for _ in range(27)])
++    runner.pad_batch(batch)
++    assert len(batch.padded_reqs) == 32
++    state["hybrid"] = True
++    runner.pad_batch(batch)
++    assert batch.padded_reqs == batch.reqs
+diff --git a/tests/core/test_kt_graph_routing.py b/tests/core/test_kt_graph_routing.py
+index e8f1ffc..8bfff29 100644
+--- a/tests/core/test_kt_graph_routing.py
++++ b/tests/core/test_kt_graph_routing.py
+@@ -2,6 +2,7 @@ import sys
+ from types import ModuleType, SimpleNamespace
+ 
+ import torch
++from minisgl.attention.expert import DenseExpertAttentionRouter, ExpertAttentionRouter, RoutedExpertMetadata
+ from minisgl.core import Context
+ from minisgl.moe.kt import KTExperts
+ 
+@@ -17,8 +18,74 @@ class _Wrapper:
+         return torch.zeros_like(hidden_states)
+ 
+ 
++class _AttentionBackend:
++    def __init__(self, name: str) -> None:
++        self.name = name
++        self.calls = []
++
++    def prepare_metadata(self, batch) -> None:
++        batch.attn_metadata = SimpleNamespace(
++            name=self.name,
++            get_last_indices=lambda bs: torch.arange(bs),
++        )
++
++    def forward(self, q, k, v, layer_id, batch):
++        self.calls.append(batch.attn_metadata.name)
++        return self.name
++
++
++def test_dense_router_preserves_pure_path_and_gathers_only_temporary_batches():
++    router = DenseExpertAttentionRouter.__new__(DenseExpertAttentionRouter)
++    router.pure_gpu = _AttentionBackend("pure")
++    calls = []
++    pool = SimpleNamespace(
++        store_kv=lambda *args: calls.append("store"),
++        gather_attention_workspace=lambda layer: calls.append("gather") or "workspace")
++    router.hybrid = SimpleNamespace(pool=pool)
++    router.use_hybrid = lambda: True
++    router.pure_gpu.run_attention = lambda q, layer, metadata, workspace: workspace
++    batch = SimpleNamespace(attn_metadata=None, out_loc=None, uses_temporary_kv=False)
++    router.prepare_metadata(batch)
++    assert router.forward(None, None, None, 0, batch) == "pure"
++    assert calls == []
++    batch.uses_temporary_kv = True
++    router.prepare_metadata(batch)
++    assert router.forward(None, None, None, 0, batch) == "workspace"
++    assert calls == ["store", "gather"]
++
++
++def test_attention_router_uses_flashinfer_until_an_expert_is_offloaded() -> None:
++    offloaded = False
++    router = ExpertAttentionRouter.__new__(ExpertAttentionRouter)
++    router.pure_gpu = _AttentionBackend("pure")
++    router.hybrid = _AttentionBackend("hybrid")
++    router.use_hybrid = lambda: offloaded
++    batch = SimpleNamespace(attn_metadata=None)
++
++    router.prepare_metadata(batch)
++    assert isinstance(batch.attn_metadata, RoutedExpertMetadata)
++    assert not batch.attn_metadata.moe_hybrid
++    assert router.forward(None, None, None, 0, batch) == "pure"
++    assert router.pure_gpu.calls == ["pure"]
++    assert isinstance(batch.attn_metadata, RoutedExpertMetadata)
++
++    offloaded = True
++    router.prepare_metadata(batch)
++    assert batch.attn_metadata.moe_hybrid
++    assert not batch.attn_metadata.attention_hybrid
++    assert router.forward(None, None, None, 0, batch) == "pure"
++
++    batch.uses_temporary_kv = True
++    router.prepare_metadata(batch)
++    assert batch.attn_metadata.moe_hybrid
++    assert batch.attn_metadata.attention_hybrid
++    assert router.forward(None, None, None, 0, batch) == "hybrid"
++    assert router.hybrid.calls == ["hybrid"]
++
++
+ def test_gguf_method_and_path_are_forwarded_to_kt(monkeypatch) -> None:
+     calls = []
++    monkeypatch.setattr(torch.cuda, "Stream", lambda device=None: SimpleNamespace())
+ 
+     class Wrapper:
+         def __init__(self, **kwargs) -> None:
+@@ -44,14 +111,56 @@ def test_gguf_method_and_path_are_forwarded_to_kt(monkeypatch) -> None:
+     ]
+ 
+     backend = KTExperts(
+-        [layer], "/models/qwen.gguf", threads=4, max_tokens=32, catalog=catalog, method="LLAMAFILE"
++        [layer],
++        "/models/qwen.gguf",
++        threads=4,
++        max_tokens=32,
++        catalog=catalog,
++        method="LLAMAFILE",
++        threadpool_count=3,
++        max_deferred_experts_per_token=2,
+     )
+ 
+     assert calls[0]["weight_path"] == "/models/qwen.gguf"
+     assert calls[0]["method"] == "LLAMAFILE"
++    assert calls[0]["cpuinfer_threads"] == 4
++    assert calls[0]["threadpool_count"] == 3
++    assert calls[0]["max_deferred_experts_per_token"] == 2
+     assert backend.wrappers[0].gpu_experts_mask.tolist() == [True, True]
+ 
+ 
++def test_cli_accepts_standard_kt_parameters() -> None:
++    from minisgl.server.args import parse_args
++
++    args, _ = parse_args(
++        [
++            "--model",
++            "/models/qwen",
++            "--dtype",
++            "bfloat16",
++            "--kt-method",
++            "AMXINT8",
++            "--kt-weight-path",
++            "/cpu/weights",
++            "--kt-cpuinfer",
++            "64",
++            "--kt-threadpool-count",
++            "2",
++            "--kt-max-deferred-experts-per-token",
++            "3",
++            "--max-offload-experts-num",
++            "192",
++        ]
++    )
++
++    assert args.kt_method == "AMXINT8"
++    assert args.kt_weight_path == "/cpu/weights"
++    assert args.kt_cpuinfer == 64
++    assert args.kt_threadpool_count == 2
++    assert args.kt_max_deferred_experts_per_token == 3
++    assert args.max_offload_experts_num == 192
++
++
+ def test_graph_selects_pure_gpu_or_hybrid_topology(monkeypatch) -> None:
+     import minisgl.core as core
+     import minisgl.moe.kt as kt
+@@ -82,7 +191,10 @@ def test_graph_selects_pure_gpu_or_hybrid_topology(monkeypatch) -> None:
+     backend = KTExperts.__new__(KTExperts)
+     backend.wrappers = {0: wrapper}
+     backend.gpu_masks = {0: torch.ones(2, dtype=torch.bool)}
++    backend.gpu_expert_maps = {0: torch.arange(2, dtype=torch.int64)}
+     backend.offloaded = {0: set()}
++    backend.tp_rank = 0
++    backend.tp_size = 1
+     x = torch.zeros((2, 4), dtype=torch.bfloat16)
+     kwargs = {
+         "hidden_states": x,
+@@ -107,3 +219,171 @@ def test_graph_selects_pure_gpu_or_hybrid_topology(monkeypatch) -> None:
+     torch.testing.assert_close(backend.forward(0, **kwargs), torch.ones_like(x))
+     assert wrapper.submissions == 2
+     assert backend.has_offloaded_experts()
++
++
++def test_hybrid_graph_keeps_non_candidate_layers_on_fused_gpu(monkeypatch) -> None:
++    import minisgl.core as core
++    import minisgl.moe.kt as kt
++
++    ctx = Context(page_size=1)
++    ctx._batch = SimpleNamespace(attn_metadata=SimpleNamespace(moe_hybrid=True))
++    monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
++    monkeypatch.setattr(
++        kt,
++        "fused_topk",
++        lambda *args, **kwargs: (
++            torch.ones((2, 1), dtype=torch.float32),
++            torch.zeros((2, 1), dtype=torch.int32),
++        ),
++    )
++    monkeypatch.setattr(
++        kt,
++        "fused_experts_impl",
++        lambda hidden_states, *args, **kwargs: torch.ones_like(hidden_states),
++    )
++
++    wrapper = _Wrapper()
++    backend = KTExperts.__new__(KTExperts)
++    backend.wrappers = {0: wrapper}
++    backend.candidate_layer_ids = frozenset({1})
++    backend.gpu_masks = {0: torch.ones(2, dtype=torch.bool)}
++    backend.gpu_expert_maps = {0: torch.arange(2, dtype=torch.int64)}
++    backend.offloaded = {1: set()}
++    backend.tp_rank = 0
++    backend.tp_size = 1
++    x = torch.zeros((2, 4), dtype=torch.bfloat16)
++
++    actual = backend.forward(
++        0,
++        hidden_states=x,
++        gating_output=torch.zeros((2, 2)),
++        topk=1,
++        renormalize=True,
++        w1=torch.empty(0),
++        w2=torch.empty(0),
++    )
++
++    torch.testing.assert_close(actual, torch.ones_like(x))
++    assert wrapper.submissions == 0
++
++
++def test_only_primary_tp_rank_contributes_replicated_cpu_output(monkeypatch) -> None:
++    import minisgl.core as core
++    import minisgl.moe.kt as kt
++
++    ctx = Context(page_size=1)
++    ctx._batch = SimpleNamespace(attn_metadata=SimpleNamespace(moe_hybrid=True))
++    monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
++    monkeypatch.setattr(
++        kt,
++        "fused_topk",
++        lambda *args, **kwargs: (
++            torch.ones((2, 1), dtype=torch.float32),
++            torch.zeros((2, 1), dtype=torch.int32),
++        ),
++    )
++    monkeypatch.setattr(
++        kt,
++        "fused_experts_impl",
++        lambda hidden_states, *args, **kwargs: torch.ones_like(hidden_states),
++    )
++    monkeypatch.setattr(
++        torch.cuda,
++        "current_stream",
++        lambda device=None: SimpleNamespace(cuda_stream=7),
++    )
++
++    wrapper = _Wrapper()
++    wrapper.sync_forward = lambda hidden_states, stream: torch.full_like(hidden_states, 4)
++    backend = KTExperts.__new__(KTExperts)
++    backend.wrappers = {0: wrapper}
++    backend.gpu_masks = {0: torch.tensor([False, True])}
++    backend.gpu_expert_maps = {0: torch.tensor([-1, 1], dtype=torch.int64)}
++    backend.offloaded = {0: {0}}
++    backend.tp_rank = 0
++    backend.tp_size = 2
++    x = torch.zeros((2, 4), dtype=torch.bfloat16)
++
++    actual = backend.forward(
++        0,
++        hidden_states=x,
++        gating_output=torch.zeros((2, 2)),
++        topk=1,
++        renormalize=True,
++        w1=torch.empty(0),
++        w2=torch.empty(0),
++    )
++
++    torch.testing.assert_close(actual, torch.full_like(x, 5))
++    assert wrapper.submissions == 1
++
++    backend.tp_rank = 1
++    torch.testing.assert_close(
++        backend.forward(
++            0,
++            hidden_states=x,
++            gating_output=torch.zeros((2, 2)),
++            topk=1,
++            renormalize=True,
++            w1=torch.empty(0),
++            w2=torch.empty(0),
++        ),
++        torch.ones_like(x),
++    )
++    assert wrapper.submissions == 1
++
++
++def test_static_offload_remaps_original_ids_to_compact_gpu_rows(monkeypatch) -> None:
++    import minisgl.core as core
++    import minisgl.moe.kt as kt
++
++    ctx = Context(page_size=1)
++    ctx._batch = SimpleNamespace(attn_metadata=SimpleNamespace(moe_hybrid=True))
++    monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
++    monkeypatch.setattr(
++        kt,
++        "fused_topk",
++        lambda *args, **kwargs: (
++            torch.ones((3, 1), dtype=torch.float32),
++            torch.tensor([[0], [1], [2]], dtype=torch.int32),
++        ),
++    )
++    seen_ids = []
++
++    def fake_fused(hidden_states, w1, w2, weights, ids, **kwargs):
++        seen_ids.append(ids.clone())
++        return torch.ones_like(hidden_states)
++
++    monkeypatch.setattr(kt, "fused_experts_impl", fake_fused)
++    monkeypatch.setattr(
++        torch.cuda,
++        "current_stream",
++        lambda device=None: SimpleNamespace(cuda_stream=7),
++    )
++
++    wrapper = _Wrapper()
++    backend = KTExperts.__new__(KTExperts)
++    backend.wrappers = {0: wrapper}
++    backend.candidate_layer_ids = frozenset({0})
++    backend.offloaded = {0: {1}}
++    backend.static_offload = True
++    backend.gpu_expert_maps = {0: torch.tensor([0, -1, 1], dtype=torch.int64)}
++    backend.tp_rank = 0
++    backend.tp_size = 2
++    x = torch.zeros((3, 4), dtype=torch.bfloat16)
++
++    actual = backend.forward(
++        0,
++        hidden_states=x,
++        gating_output=torch.zeros((3, 3)),
++        topk=1,
++        renormalize=True,
++        w1=torch.empty((2, 1, 1)),
++        w2=torch.empty((2, 1, 1)),
++    )
++
++    torch.testing.assert_close(actual, torch.ones_like(x))
++    torch.testing.assert_close(
++        seen_ids[0], torch.tensor([[0], [-1], [1]], dtype=torch.int64)
++    )
++    assert wrapper.submissions == 1
+diff --git a/tests/kernel/test_expert_kv.py b/tests/kernel/test_expert_kv.py
+index 3c87dcc..8e2d049 100644
+--- a/tests/kernel/test_expert_kv.py
++++ b/tests/kernel/test_expert_kv.py
+@@ -14,15 +14,16 @@ pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA requ
+ 
+ 
+ @pytest.mark.parametrize("prefix,qlen", [(0, 19), (7, 1), (5, 17)])
+-def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monkeypatch):
++@pytest.mark.parametrize("tp_size", [1, 2])
++def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monkeypatch, tp_size):
+     import minisgl.distributed.info as info
+     from minisgl.kernel.triton.expert_attention import decode_attention, paged_attention
+ 
+     monkeypatch.setattr(info, "_TP_INFO", None)
+-    set_tp_info(rank=0, size=1)
++    set_tp_info(rank=0, size=tp_size)
+     torch.manual_seed(7)
+     device = torch.device("cuda")
+-    cfg = SimpleNamespace(num_layers=2, num_kv_heads=2, head_dim=64)
++    cfg = SimpleNamespace(num_layers=2, num_kv_heads=2 * tp_size, head_dim=64)
+     unit = 2 * cfg.num_layers * cfg.num_kv_heads * cfg.head_dim
+     gate = torch.randn(unit * 30 + 11, dtype=torch.bfloat16, device=device)
+     down = torch.randn(unit * 15 + 13, dtype=torch.bfloat16, device=device)
+@@ -51,6 +52,7 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
+     )
+     manager.begin_eviction(key)
+     manager.complete_eviction(key)
++    pool.set_expert_active(key, True)
+     length = prefix + qlen
+     blocks = pool.allocator.allocate(length)
+     # Shuffle slots, mixing persistent and expert memory in one request.
+@@ -61,6 +63,13 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
+         v = torch.randn_like(k)
+         q = torch.randn(qlen, 4, 64, device=device, dtype=torch.bfloat16)
+         pool.store_kv(k, v, slots, layer)
++        from minisgl.kernel.triton.expert_attention import gather_kv
++        gathered_k, gathered_v = gather_kv(slots, pool.addresses[:, layer], 2, 64)
++        torch.testing.assert_close(gathered_k[:, 0], k, rtol=0, atol=0)
++        torch.testing.assert_close(gathered_v[:, 0], v, rtol=0, atol=0)
++        dense_k, dense_v = pool.gather_attention_workspace(layer)
++        torch.testing.assert_close(dense_k[slots.long(), 0], k, rtol=0, atol=0)
++        torch.testing.assert_close(dense_v[slots.long(), 0], v, rtol=0, atol=0)
+         actual = torch.empty_like(q)
+         paged_attention(q, actual, slots, pool.addresses[:, layer], prefix, 2)
+         scores = torch.einsum("qhd,khd->hqk", q.float(), k.repeat_interleave(2, 1).float()) / 8
+@@ -86,9 +95,14 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
+     assert torch.equal(gate[-11:], original[0][-11:])  # Tail bytes never allocated.
+     torch.cuda.synchronize()
+     pool.allocator.release(blocks)
++    manager.flush_pending_restorations()
+     assert not backend.cpu
+     assert torch.equal(gate, original[0])
+     assert torch.equal(down, original[1])
++    pool.set_expert_active(key, False)
++    dense_k, dense_v = pool.gather_attention_workspace(0)
++    assert torch.count_nonzero(dense_k[4:]) == 0
++    assert torch.count_nonzero(dense_v[4:]) == 0
+ 
+ 
+ @pytest.mark.parametrize("cpu_experts", [[1, 3], [0, 1, 2, 3]])
+diff --git a/python/minisgl/attention/indirect_fi.py b/python/minisgl/attention/indirect_fi.py
+new file mode 100644
+index 0000000..b46d1bd
+--- /dev/null
++++ b/python/minisgl/attention/indirect_fi.py
+@@ -0,0 +1,96 @@
++"""Private FlashInfer FA2 specialization for discontiguous expert-backed KV.
++
++The regular FlashInfer module and its installed headers are never modified.
++Only our uniquely named JIT module interprets page-stride 4 BF16 tensors as
++64-bit address tables. K and V use different entry strides (page size is one)
++so FlashInfer computes their independent offsets.
++"""
++
++from dataclasses import replace
++from functools import cache
++import hashlib
++import os
++from types import FunctionType
++
++import torch
++
++
++class IndirectFlashInferUnavailable(RuntimeError):
++    """An older FlashInfer installation needs the dense compatibility path."""
++
++
++@cache
++def get_indirect_module(head_dim: int):
++    import flashinfer.prefill as prefill
++    from flashinfer.jit import env
++
++    required = ("_gen_batch_prefill_primary_module",
++                "_gen_batch_prefill_independent_paged_module")
++    if any(not hasattr(prefill, name) for name in required):
++        raise IndirectFlashInferUnavailable("FlashInfer lacks independent KV stride modules")
++
++    original = env.FLASHINFER_INCLUDE_DIR / "flashinfer" / "page.cuh"
++    source = original.read_text()
++    for prefix, data in (("", "k_data"), ("v_", "v_data")):
++        line = (f"    return page_idx * {prefix}stride_page + head_idx * "
++                f"{prefix}stride_h + entry_idx * {prefix}stride_n + feat_idx;")
++        if source.count(line) != 1:
++            raise IndirectFlashInferUnavailable("Unsupported FlashInfer page.cuh for indirect KV")
++        replacement = f"""
++#ifdef __CUDA_ARCH__
++    if ({prefix}stride_page == 4 && sizeof(DType) == 2) {{
++      const auto address = __ldg(reinterpret_cast<const uint64_t*>({data}) + page_idx);
++      const int64_t delta = int64_t(address) - int64_t(reinterpret_cast<uintptr_t>({data}));
++      return size_t(delta / int64_t(sizeof(DType))) + head_idx * head_dim + feat_idx;
++    }}
++#endif
++{line}"""
++        source = source.replace(line, replacement)
++    digest = hashlib.sha256(source.encode()).hexdigest()[:12]
++    suffix = "_minisgl_indirect_" + digest
++    directory = env.FLASHINFER_GEN_SRC_DIR / suffix[1:]
++    directory.mkdir(parents=True, exist_ok=True)
++    header = directory / "page.cuh"
++    if not header.exists() or header.read_text() != source:
++        temporary = directory / f"page.{os.getpid()}.tmp"
++        temporary.write_text(source)
++        temporary.replace(header)
++
++    def specialize(factory):
++        def make(*args, **kwargs):
++            spec = factory(*args, **kwargs)
++            return replace(
++                spec, name=spec.name + suffix,
++                extra_cuda_cflags=[*(spec.extra_cuda_cflags or []),
++                                   f"--pre-include={header}"],
++                extra_include_dirs=[*(spec.extra_include_dirs or []), original.parent],
++            )
++        return make
++
++    # Reuse FlashInfer's Python ABI adapter with private factories and op names.
++    # This creates no global monkeypatch and cannot affect the pure-GPU path.
++    original_factory = prefill.get_batch_prefill_module.__wrapped__
++    namespace = dict(original_factory.__globals__)
++    for name in ("_gen_batch_prefill_primary_module",
++                 "_gen_batch_prefill_independent_paged_module"):
++        namespace[name] = specialize(namespace[name])
++    get_uri = namespace["get_batch_prefill_uri"]
++    namespace["get_batch_prefill_uri"] = lambda *args: get_uri(*args) + suffix
++    factory = FunctionType(original_factory.__code__, namespace)
++    return factory("fa2", torch.bfloat16, torch.bfloat16, torch.bfloat16,
++                   torch.int32, head_dim, head_dim, 0, False, False, False, False)
++
++
++def make_pointer_views(addresses, heads: int, head_dim: int):
++    """Own padded tables so fake tensor bounds are valid for every layer."""
++    count = addresses.shape[-1]
++    padding = (heads * head_dim + 3) // 4
++    tables = torch.empty((*addresses.shape[:-1], count + padding),
++                         dtype=torch.int64, device=addresses.device)
++    tables[..., :count].copy_(addresses)
++    tables[..., count:].zero_()
++    views = []
++    for layer in range(addresses.shape[1]):
++        views.append(tuple(tables[kind, layer].view(torch.bfloat16).as_strided(
++            (count, 1, heads, head_dim), (4, kind, head_dim, 1)) for kind in range(2)))
++    return tables, views
+diff --git a/tests/core/test_expert_overlap.py b/tests/core/test_expert_overlap.py
+new file mode 100644
+index 0000000..9384fb3
+--- /dev/null
++++ b/tests/core/test_expert_overlap.py
+@@ -0,0 +1,90 @@
++from contextlib import nullcontext
++from types import SimpleNamespace as NS
++
++import pytest
++
++from minisgl.scheduler.scheduler import Scheduler
++from minisgl.scheduler.expert_cache import ExpertEvictionRequired
++
++
++def test_normal_overlap_launches_next_batch_before_retiring_previous():
++    scheduler = object.__new__(Scheduler)
++    actions = []
++    scheduler.engine = NS(expert_memory=None, stream=NS(wait_stream=lambda _: None))
++    scheduler.stream = None
++    scheduler.engine_stream_ctx = nullcontext()
++    scheduler.prefill_manager = NS(runnable=True)
++    scheduler.decode_manager = NS(runnable=False)
++    scheduler.receive_msg = lambda **_: []
++    scheduler._select_next_batch = lambda: object()
++    scheduler._prepare_batch = lambda _: actions.append("prepare") or "prepared"
++    scheduler._forward = lambda _: actions.append("launch") or "output"
++    scheduler._process_last_data = lambda _: actions.append("retire")
++    assert scheduler.overlap_loop("previous") == ("prepared", "output")
++    assert actions == ["prepare", "launch", "retire"]
++
++
++@pytest.mark.parametrize("needs_eviction", [False, True])
++def test_slow_path_retires_once_before_retry_and_launch(needs_eviction, monkeypatch):
++    import minisgl.scheduler.scheduler as module
++    monkeypatch.setattr(module.logger, "info_rank0", lambda *args: None)
++    scheduler = object.__new__(Scheduler)
++    actions = []
++    scheduler.engine = NS(expert_memory=None, stream=NS(wait_stream=lambda _: None))
++    scheduler.stream = None
++    scheduler.engine_stream_ctx = nullcontext()
++    scheduler.prefill_manager = NS(runnable=True)
++    scheduler.decode_manager = NS(runnable=False)
++    scheduler.receive_msg = lambda **_: []
++    scheduler.cache_manager = NS(
++        poll_restorations=lambda: actions.append("poll"),
++        evict_for_batch=lambda _: actions.append("evict"),
++    )
++    batch = NS(reqs=[object()], is_decode=False)
++    scheduler._select_next_batch = lambda: batch
++    attempts = 0
++
++    def prepare(_):
++        nonlocal attempts
++        attempts += 1
++        actions.append("prepare")
++        if attempts == 1 or (needs_eviction and attempts == 2):
++            raise ExpertEvictionRequired(7)
++        return "prepared"
++
++    def retire(data, **kwargs):
++        if data is not None:
++            assert not kwargs.get("flush_restorations", True)
++            actions.append("retire")
++
++    scheduler._prepare_batch = prepare
++    scheduler._process_last_data = retire
++    scheduler._forward = lambda _: actions.append("launch") or "output"
++    result = scheduler.overlap_loop("previous")
++    assert result == ("prepared", "output")
++    expected = ["prepare", "retire", "poll", "prepare"]
++    if needs_eviction:
++        expected += ["evict", "prepare"]
++    assert actions == expected + ["launch"]
++
++
++def test_deferred_prefill_preserves_chunk_and_returns_new_admission_resources():
++    from minisgl.scheduler.prefill import PrefillManager
++    actions = []
++    manager = PrefillManager(
++        NS(unlock=lambda handle: actions.append(("unlock", handle))),
++        NS(free=lambda table: actions.append(("free", table))), NS())
++    old_chunk = object()
++    first, second = NS(uid=1, chunked_req=None), NS(uid=2, chunked_req=None)
++    pending = [first, second]
++    manager._selection_snapshot = (pending, [(first, old_chunk), (second, None)])
++    manager.pending_list = []
++    manager.defer_selected_batch(NS(reqs=[
++        NS(uid=1, table_idx=3, cache_handle="old"),
++        NS(uid=2, table_idx=4, cache_handle="new")]))
++    assert manager.pending_list is pending
++    assert first.chunked_req is old_chunk
++    assert second.chunked_req is None
++    assert actions == [("unlock", "new"), ("free", 4)]
++
++
+diff --git a/tests/kernel/test_indirect_fi.py b/tests/kernel/test_indirect_fi.py
+new file mode 100644
+index 0000000..923295b
+--- /dev/null
++++ b/tests/kernel/test_indirect_fi.py
+@@ -0,0 +1,63 @@
++"""The private FA2 module must agree with standard FA2 for real KV aliases."""
++
++from types import SimpleNamespace
++
++import pytest
++import torch
++
++pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
++
++
++@pytest.mark.parametrize("decode,qlen", [(True, 1), (False, 1), (False, 19)])
++def test_indirect_flashinfer_matches_dense_and_replays(decode, qlen, monkeypatch):
++    from flashinfer import BatchDecodeWithPagedKVCacheWrapper, BatchPrefillWithPagedKVCacheWrapper
++    from minisgl.attention.indirect_fi import get_indirect_module, make_pointer_views
++    import minisgl.distributed.info as info
++    from minisgl.distributed import set_tp_info
++    from minisgl.kvcache.expert_pool import ExpertKVCache
++    from minisgl.moe.storage import ExpertStorage, ExpertStorageCatalog
++
++    monkeypatch.setattr(info, "_TP_INFO", None)
++    set_tp_info(0, 2)
++    torch.manual_seed(19)
++    device = torch.device("cuda")
++    config = SimpleNamespace(num_layers=2, num_kv_heads=4, head_dim=128)
++    weights = [torch.randn(65536, dtype=torch.bfloat16, device=device) for _ in range(2)]
++    catalog = ExpertStorageCatalog([ExpertStorage(0, 0, 0.01, *weights)])
++    pool = ExpertKVCache(config, 17, device, catalog)
++    pool.set_expert_active((0, 0), True)
++    owners, views = make_pointer_views(pool.addresses, 2, 128)
++    module = get_indirect_module(128)
++    workspace = torch.empty(128 * 1024 * 1024, dtype=torch.uint8, device=device)
++    bs, length = 3, 23
++    indices = torch.randperm(pool.total_slots, device=device, dtype=torch.int32)[:bs * length]
++    indptr = torch.arange(bs + 1, dtype=torch.int32) * length
++    ones = torch.ones(bs, dtype=torch.int32)
++    if decode:
++        wrapper = BatchDecodeWithPagedKVCacheWrapper(
++            workspace, kv_layout="NHD", use_tensor_cores=True, backend="fa2")
++        wrapper.plan(indptr, indices, ones, 16, 2, 128, 1,
++                     data_type=torch.bfloat16, q_data_type=torch.bfloat16)
++    else:
++        wrapper = BatchPrefillWithPagedKVCacheWrapper(workspace, kv_layout="NHD", backend="fa2")
++        wrapper.plan(torch.arange(bs + 1, dtype=torch.int32) * qlen,
++                     indptr, indices, ones, 16, 2, 128, 1, causal=True,
++                     q_data_type=torch.bfloat16, kv_data_type=torch.bfloat16)
++    standard = wrapper._cached_module
++    for layer in range(config.num_layers):
++        k = torch.randn(bs * length, 2, 128, dtype=torch.bfloat16, device=device)
++        v = torch.randn_like(k)
++        q = torch.randn(bs * qlen, 16, 128, dtype=torch.bfloat16, device=device)
++        pool.store_kv(k, v, indices, layer)
++        wrapper._cached_module = standard
++        expected = wrapper.run(q, pool.gather_attention_workspace(layer))
++        wrapper._cached_module = module
++        actual = wrapper.run(q, views[layer])
++        torch.testing.assert_close(actual, expected, atol=0.005, rtol=0.02)
++        graph = torch.cuda.CUDAGraph()
++        with torch.cuda.graph(graph):
++            actual = wrapper.run(q, views[layer])
++        graph.replay()
++        torch.testing.assert_close(actual, expected, atol=0.005, rtol=0.02)
++    # The adapter must not mutate either pointer table or authoritative KV.
++    torch.testing.assert_close(owners[..., :pool.total_slots], pool.addresses, atol=0, rtol=0)

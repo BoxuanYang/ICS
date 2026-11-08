@@ -14,15 +14,16 @@ pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA requ
 
 
 @pytest.mark.parametrize("prefix,qlen", [(0, 19), (7, 1), (5, 17)])
-def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monkeypatch):
+@pytest.mark.parametrize("tp_size", [1, 2])
+def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monkeypatch, tp_size):
     import minisgl.distributed.info as info
     from minisgl.kernel.triton.expert_attention import decode_attention, paged_attention
 
     monkeypatch.setattr(info, "_TP_INFO", None)
-    set_tp_info(rank=0, size=1)
+    set_tp_info(rank=0, size=tp_size)
     torch.manual_seed(7)
     device = torch.device("cuda")
-    cfg = SimpleNamespace(num_layers=2, num_kv_heads=2, head_dim=64)
+    cfg = SimpleNamespace(num_layers=2, num_kv_heads=2 * tp_size, head_dim=64)
     unit = 2 * cfg.num_layers * cfg.num_kv_heads * cfg.head_dim
     gate = torch.randn(unit * 30 + 11, dtype=torch.bfloat16, device=device)
     down = torch.randn(unit * 15 + 13, dtype=torch.bfloat16, device=device)
@@ -51,6 +52,7 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
     )
     manager.begin_eviction(key)
     manager.complete_eviction(key)
+    pool.set_expert_active(key, True)
     length = prefix + qlen
     blocks = pool.allocator.allocate(length)
     # Shuffle slots, mixing persistent and expert memory in one request.
@@ -61,6 +63,13 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
         v = torch.randn_like(k)
         q = torch.randn(qlen, 4, 64, device=device, dtype=torch.bfloat16)
         pool.store_kv(k, v, slots, layer)
+        from minisgl.kernel.triton.expert_attention import gather_kv
+        gathered_k, gathered_v = gather_kv(slots, pool.addresses[:, layer], 2, 64)
+        torch.testing.assert_close(gathered_k[:, 0], k, rtol=0, atol=0)
+        torch.testing.assert_close(gathered_v[:, 0], v, rtol=0, atol=0)
+        dense_k, dense_v = pool.gather_attention_workspace(layer)
+        torch.testing.assert_close(dense_k[slots.long(), 0], k, rtol=0, atol=0)
+        torch.testing.assert_close(dense_v[slots.long(), 0], v, rtol=0, atol=0)
         actual = torch.empty_like(q)
         paged_attention(q, actual, slots, pool.addresses[:, layer], prefix, 2)
         scores = torch.einsum("qhd,khd->hqk", q.float(), k.repeat_interleave(2, 1).float()) / 8
@@ -86,9 +95,14 @@ def test_attention_reads_expert_storage_and_restores_weights(prefix, qlen, monke
     assert torch.equal(gate[-11:], original[0][-11:])  # Tail bytes never allocated.
     torch.cuda.synchronize()
     pool.allocator.release(blocks)
+    manager.flush_pending_restorations()
     assert not backend.cpu
     assert torch.equal(gate, original[0])
     assert torch.equal(down, original[1])
+    pool.set_expert_active(key, False)
+    dense_k, dense_v = pool.gather_attention_workspace(0)
+    assert torch.count_nonzero(dense_k[4:]) == 0
+    assert torch.count_nonzero(dense_v[4:]) == 0
 
 
 @pytest.mark.parametrize("cpu_experts", [[1, 3], [0, 1, 2, 3]])

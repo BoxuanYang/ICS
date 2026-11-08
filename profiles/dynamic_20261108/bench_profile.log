@@ -1,0 +1,19 @@
+Discovering model from http://127.0.0.5:2000/v1/models...
+Loading tokenizer from /data/models/Qwen3-30B-A3B...
+Loading and tokenizing /data1/zhangrui/datasets/sharegpt/ShareGPT_V3_unfiltered_cleaned_split.json...
+Token indices sequence length is longer than the specified maximum sequence length for this model (221043 > 131072). Running this sequence through the model will result in indexing errors
+Eligible ShareGPT requests: 92664
+[1/1] RPS=8, num_prompts=200
+  RPS=8: 20/200 requests completed
+  RPS=8: 40/200 requests completed
+  RPS=8: 60/200 requests completed
+  RPS=8: 80/200 requests completed
+  RPS=8: 100/200 requests completed
+  RPS=8: 120/200 requests completed
+  RPS=8: 140/200 requests completed
+  RPS=8: 160/200 requests completed
+  RPS=8: 180/200 requests completed
+  RPS=8: 200/200 requests completed
+  normalized_latency=566.100 ms/token, request_throughput=3.110 req/s, output_throughput=494.505 tok/s, successful=200, failed=0
+Wrote profiles/dynamic_20261108/profile_summary.json
+Wrote profiles/dynamic_20261108/profile_requests.json

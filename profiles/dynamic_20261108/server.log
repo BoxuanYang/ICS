@@ -1,0 +1,146 @@
+[1m[2026-11-08|16:08:14][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/data/models/Qwen3-30B-A3B', tp_info=DistributedInfo(rank=0, size=2), dtype=torch.bfloat16, max_running_req=96, attention_backend='fi', moe_backend='fused', expert_profile='./30B_experts_frequency_sorted.json', max_offload_experts_num=100, kt_weight_path='/data1/models/Qwen3-30B-A3B-GGUF', kt_cpuinfer=64, kt_threadpool_count=2, kt_method='LLAMAFILE', kt_max_deferred_experts_per_token=0, cuda_graph_bs=None, cuda_graph_max_bs=96, page_size=1, memory_ratio=0.9, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=8192, num_page_override=16384, max_extend_tokens=8192, cache_type='radix', offline_mode=False, _unique_suffix='.pid=3113108', server_host='127.0.0.5', server_port=2000, num_tokenizer=0, silent_output=False)
+[1m[2026-11-08|16:08:17|core|rank=0][0m [32mINFO    [0m KV-MoE enabled: pointer-table attention, dual CUDA graphs, and overlap scheduling
+[1m[2026-11-08|16:08:17|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+Process minisgl-TP0-scheduler:
+Traceback (most recent call last):
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/boxuan/ICS/python/minisgl/server/launch.py", line 21, in _run_scheduler
+    scheduler = Scheduler(args)
+                ^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 50, in __init__
+    self.engine = Engine(config)
+                  ^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/engine.py", line 44, in __init__
+    self.tp_cpu_group = self._init_communication(config)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/engine.py", line 200, in _init_communication
+    enable_pynccl_distributed(config.tp_info, tp_cpu_group, max_bytes)
+  File "/home/boxuan/ICS/python/minisgl/distributed/impl.py", line 83, in enable_pynccl_distributed
+    comm = init_pynccl(
+           ^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/kernel/pynccl.py", line 56, in init_pynccl
+    module = _load_nccl_module()
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/kernel/pynccl.py", line 30, in _load_nccl_module
+    return load_aot("pynccl", cuda_files=["pynccl.cu"], extra_ldflags=["-lnccl"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/kernel/utils.py", line 75, in load_aot
+    return load(
+           ^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 1530, in load
+    build(
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 1376, in build
+    return _build_impl(
+           ^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 805, in _build_impl
+    build_ninja(str(build_dir))
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 671, in build_ninja
+    raise RuntimeError("\n".join(msg))
+RuntimeError: ninja exited with status 1
+stdout:
+[1/2] /home/boxuan/miniconda3/envs/minisgl/bin/nvcc  --generate-dependencies-with-compile --dependency-output cuda_0.o.d -Xcompiler -fPIC -std=c++17 -O2 -gencode=arch=compute_86,code=sm_86 -std=c++20 -O3 --expt-relaxed-constexpr -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -I/home/boxuan/ICS/python/minisgl/kernel/csrc/include -c /home/boxuan/ICS/python/minisgl/kernel/csrc/src/pynccl.cu -o cuda_0.o
+nvcc warning : incompatible redefinition for option 'std', the last value of this option was used
+nvcc warning : incompatible redefinition for option 'optimize', the last value of this option was used
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h: In instantiation of ‘static tvm::ffi::Function tvm::ffi::Function::FromTyped(TCallable&&, std::string) [with TCallable = tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>; std::string = std::__cxx11::basic_string<char>]’:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:755:34:   required from ‘tvm::ffi::reflection::ObjectDef<T>::~ObjectDef() [with Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/ICS/python/minisgl/kernel/csrc/src/pynccl.cu:179:48:   required from here
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h:556:20: warning: ‘tvm::ffi::Function::FromTyped<tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)> >(tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>&&, std::string)::<lambda(const tvm::ffi::AnyView*, int32_t, tvm::ffi::Any*)>’ declared with greater visibility than the type of its field ‘tvm::ffi::Function::FromTyped<tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)> >(tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>&&, std::string)::<lambda(const tvm::ffi::AnyView*, int32_t, tvm::ffi::Any*)>::__callable’ [-Wattributes]
+  556 |     auto call_packed = [callable = std::forward<TCallable>(callable), name = std::move(name)](
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  557 |                            const AnyView* args, int32_t num_args, Any* rv) mutable -> void {
+      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  558 |       detail::unpack_call<typename FuncInfo::RetType>(
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  559 |           std::make_index_sequence<FuncInfo::num_args>{}, &name, callable, args, num_args, rv);
+      |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  560 |     };
+      |                     
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h: In instantiation of ‘static tvm::ffi::Function tvm::ffi::Function::FromTyped(TCallable&&, std::string) [with TCallable = tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda()>; std::string = std::__cxx11::basic_string<char>]’:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:765:34:   required from ‘tvm::ffi::reflection::ObjectDef<T>::~ObjectDef() [with Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/ICS/python/minisgl/kernel/csrc/src/pynccl.cu:179:48:   required from here
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h:556:20: warning: ‘tvm::ffi::Function::FromTyped<tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda()> >(tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda()>&&, std::string)::<lambda(const tvm::ffi::AnyView*, int32_t, tvm::ffi::Any*)>’ declared with greater visibility than the type of its field ‘tvm::ffi::Function::FromTyped<tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda()> >(tvm::ffi::reflection::ObjectDef<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper>::~ObjectDef()::<lambda()>&&, std::string)::<lambda(const tvm::ffi::AnyView*, int32_t, tvm::ffi::Any*)>::__callable’ [-Wattributes]
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function_detail.h: In instantiation of ‘struct tvm::ffi::detail::FunctionInfo<tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, std::__cxx11::basic_string<char>)>, void>’:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h:558:9:   required from ‘static tvm::ffi::Function tvm::ffi::Function::FromTyped(TCallable&&, std::string) [with TCallable = tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, std::__cxx11::basic_string<char>)>; std::string = std::__cxx11::basic_string<char>]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:462:27:   required from ‘static tvm::ffi::Function tvm::ffi::reflection::ReflectionDefBase::GetMethod(std::string, Func&&) [with Func = void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const; std::string = std::__cxx11::basic_string<char>]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:1040:28:   required from ‘void tvm::ffi::reflection::ObjectDef<T>::RegisterMethod(const char*, bool, Func&&, Extra&& ...) [with Func = void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const; Extra = {}; Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:842:15:   required from ‘tvm::ffi::reflection::ObjectDef<T>& tvm::ffi::reflection::ObjectDef<T>::def(const char*, Func&&, Extra&& ...) [with Func = void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const; Extra = {}; Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/ICS/python/minisgl/kernel/csrc/src/pynccl.cu:179:151:   required from here
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function_detail.h:127:8: warning: ‘tvm::ffi::detail::FunctionInfo<tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, std::__cxx11::basic_string<char>)>, void>’ declared with greater visibility than its base ‘tvm::ffi::detail::FunctionInfoHelper<void (tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, std::__cxx11::basic_string<char>)>::*)(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, std::__cxx11::basic_string<char>) const>’ [-Wattributes]
+  127 | struct FunctionInfo : FunctionInfoHelper<decltype(&T::operator())> {};
+      |        ^~~~~~~~~~~~
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function_detail.h: In instantiation of ‘struct tvm::ffi::detail::FunctionInfo<tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, tvm::ffi::TensorView>(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, tvm::ffi::TensorView)>, void>’:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h:558:9:   required from ‘static tvm::ffi::Function tvm::ffi::Function::FromTyped(TCallable&&, std::string) [with TCallable = tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, tvm::ffi::TensorView>(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, tvm::ffi::TensorView)>; std::string = std::__cxx11::basic_string<char>]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:462:27:   required from ‘static tvm::ffi::Function tvm::ffi::reflection::ReflectionDefBase::GetMethod(std::string, Func&&) [with Func = void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const; std::string = std::__cxx11::basic_string<char>]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:1040:28:   required from ‘void tvm::ffi::reflection::ObjectDef<T>::RegisterMethod(const char*, bool, Func&&, Extra&& ...) [with Func = void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const; Extra = {}; Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:842:15:   required from ‘tvm::ffi::reflection::ObjectDef<T>& tvm::ffi::reflection::ObjectDef<T>::def(const char*, Func&&, Extra&& ...) [with Func = void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const; Extra = {}; Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/ICS/python/minisgl/kernel/csrc/src/pynccl.cu:179:195:   required from here
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function_detail.h:127:8: warning: ‘tvm::ffi::detail::FunctionInfo<tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, tvm::ffi::TensorView>(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, tvm::ffi::TensorView)>, void>’ declared with greater visibility than its base ‘tvm::ffi::detail::FunctionInfoHelper<void (tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void, tvm::ffi::TensorView, tvm::ffi::TensorView>(void (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)(tvm::ffi::TensorView, tvm::ffi::TensorView) const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, tvm::ffi::TensorView)>::*)(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*, tvm::ffi::TensorView, tvm::ffi::TensorView) const>’ [-Wattributes]
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function_detail.h: In instantiation of ‘struct tvm::ffi::detail::FunctionInfo<tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void*>(void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>, void>’:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function.h:558:9:   required from ‘static tvm::ffi::Function tvm::ffi::Function::FromTyped(TCallable&&, std::string) [with TCallable = tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void*>(void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>; std::string = std::__cxx11::basic_string<char>]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:462:27:   required from ‘static tvm::ffi::Function tvm::ffi::reflection::ReflectionDefBase::GetMethod(std::string, Func&&) [with Func = void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const; std::string = std::__cxx11::basic_string<char>]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:1040:28:   required from ‘void tvm::ffi::reflection::ObjectDef<T>::RegisterMethod(const char*, bool, Func&&, Extra&& ...) [with Func = void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const; Extra = {}; Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/reflection/registry.h:842:15:   required from ‘tvm::ffi::reflection::ObjectDef<T>& tvm::ffi::reflection::ObjectDef<T>::def(const char*, Func&&, Extra&& ...) [with Func = void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const; Extra = {}; Class = _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper]’
+/home/boxuan/ICS/python/minisgl/kernel/csrc/src/pynccl.cu:179:239:   required from here
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include/tvm/ffi/function_detail.h:127:8: warning: ‘tvm::ffi::detail::FunctionInfo<tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void*>(void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>, void>’ declared with greater visibility than its base ‘tvm::ffi::detail::FunctionInfoHelper<void* (tvm::ffi::reflection::ReflectionDefBase::WrapFunction<_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper, void*>(void* (_GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper::*)() const)::<lambda(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*)>::*)(const _GLOBAL__N__bd945e10_9_pynccl_cu_7fe9369f_3113639::NCCLWrapper*) const>’ [-Wattributes]
+[2/2] c++ cuda_0.o -shared -L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/lib -ltvm_ffi -L/home/boxuan/miniconda3/envs/minisgl/lib64 -lcudart -lnccl -o minisgl__pynccl.so
+FAILED: [code=1] minisgl__pynccl.so 
+c++ cuda_0.o -shared -L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/lib -ltvm_ffi -L/home/boxuan/miniconda3/envs/minisgl/lib64 -lcudart -lnccl -o minisgl__pynccl.so
+/usr/bin/ld: cannot find -lnccl: No such file or directory
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+Process minisgl-TP1-scheduler:
+Traceback (most recent call last):
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/boxuan/ICS/python/minisgl/server/launch.py", line 21, in _run_scheduler
+    scheduler = Scheduler(args)
+                ^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 50, in __init__
+    self.engine = Engine(config)
+                  ^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/engine.py", line 44, in __init__
+    self.tp_cpu_group = self._init_communication(config)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/engine.py", line 200, in _init_communication
+    enable_pynccl_distributed(config.tp_info, tp_cpu_group, max_bytes)
+  File "/home/boxuan/ICS/python/minisgl/distributed/impl.py", line 83, in enable_pynccl_distributed
+    comm = init_pynccl(
+           ^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/kernel/pynccl.py", line 56, in init_pynccl
+    module = _load_nccl_module()
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/kernel/pynccl.py", line 30, in _load_nccl_module
+    return load_aot("pynccl", cuda_files=["pynccl.cu"], extra_ldflags=["-lnccl"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/kernel/utils.py", line 75, in load_aot
+    return load(
+           ^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 1530, in load
+    build(
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 1376, in build
+    return _build_impl(
+           ^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 805, in _build_impl
+    build_ninja(str(build_dir))
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/cpp/extension.py", line 671, in build_ninja
+    raise RuntimeError("\n".join(msg))
+RuntimeError: ninja exited with status 1
+stdout:
+[1/1] c++ cuda_0.o -shared -L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/lib -ltvm_ffi -L/home/boxuan/miniconda3/envs/minisgl/lib64 -lcudart -lnccl -o minisgl__pynccl.so
+FAILED: [code=1] minisgl__pynccl.so 
+c++ cuda_0.o -shared -L/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/lib -ltvm_ffi -L/home/boxuan/miniconda3/envs/minisgl/lib64 -lcudart -lnccl -o minisgl__pynccl.so
+/usr/bin/ld: cannot find -lnccl: No such file or directory
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 3 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

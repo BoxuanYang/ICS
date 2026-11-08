@@ -1,0 +1,1525 @@
+[1m[2026-11-08|16:09:43][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/data/models/Qwen3-30B-A3B', tp_info=DistributedInfo(rank=0, size=2), dtype=torch.bfloat16, max_running_req=96, attention_backend='fi', moe_backend='fused', expert_profile='./30B_experts_frequency_sorted.json', max_offload_experts_num=100, kt_weight_path='/data1/models/Qwen3-30B-A3B-GGUF', kt_cpuinfer=64, kt_threadpool_count=2, kt_method='LLAMAFILE', kt_max_deferred_experts_per_token=0, cuda_graph_bs=None, cuda_graph_max_bs=96, page_size=1, memory_ratio=0.9, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=8192, num_page_override=16384, max_extend_tokens=8192, cache_type='radix', offline_mode=False, _unique_suffix='.pid=3116297', server_host='127.0.0.5', server_port=2000, num_tokenizer=0, silent_output=False)
+[1m[2026-11-08|16:09:46|core|rank=0][0m [32mINFO    [0m KV-MoE enabled: pointer-table attention, dual CUDA graphs, and overlap scheduling
+[1m[2026-11-08|16:09:46|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[1m[2026-11-08|16:09:47|core|rank=0][0m [32mINFO    [0m Free memory before loading model: 46.96 GiB
+Loading weights:   0%|          | 0/16 [00:00<?, ?it/s]Loading weights:   6%|▋         | 1/16 [00:01<00:16,  1.13s/it]Loading weights:  12%|█▎        | 2/16 [00:02<00:16,  1.19s/it]Loading weights:  19%|█▉        | 3/16 [00:03<00:16,  1.24s/it]Loading weights:  25%|██▌       | 4/16 [00:04<00:12,  1.01s/it]Loading weights:  31%|███▏      | 5/16 [00:05<00:12,  1.16s/it]Loading weights:  38%|███▊      | 6/16 [00:07<00:12,  1.20s/it]Loading weights:  44%|████▍     | 7/16 [00:08<00:11,  1.27s/it]Loading weights:  50%|█████     | 8/16 [00:09<00:10,  1.26s/it]Loading weights:  56%|█████▋    | 9/16 [00:10<00:08,  1.27s/it]Loading weights:  62%|██████▎   | 10/16 [00:12<00:07,  1.28s/it]Loading weights:  69%|██████▉   | 11/16 [00:13<00:06,  1.26s/it]Loading weights:  75%|███████▌  | 12/16 [00:14<00:05,  1.26s/it]Loading weights:  81%|████████▏ | 13/16 [00:16<00:03,  1.27s/it]Loading weights:  88%|████████▊ | 14/16 [00:17<00:02,  1.24s/it]Loading weights:  94%|█████████▍| 15/16 [00:18<00:01,  1.26s/it]Loading weights: 100%|██████████| 16/16 [00:19<00:00,  1.27s/it]Loading weights: 100%|██████████| 16/16 [00:19<00:00,  1.24s/it]
+[1m[2026-11-08|16:10:08|core|rank=0][0m [32mINFO    [0m KT CPU expert weights: method=LLAMAFILE, path=/data1/models/Qwen3-30B-A3B-GGUF
+[1m[2026-11-08|16:10:08|core|rank=0][0m [32mINFO    [0m KT CPU executor: cpuinfer=64, threadpool_count=2, max_deferred_experts_per_token=0
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/kt_kernel/utils/loader.py:1076: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:206.)
+  data = torch.from_numpy(np.frombuffer(data_bytes, dtype=np.uint8))
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/kt_kernel/utils/loader.py:1076: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:206.)
+  data = torch.from_numpy(np.frombuffer(data_bytes, dtype=np.uint8))
+CPUInfer[0x564abecb7110]: Hello
+WorkerPool[0x564abebc7b90] 2 subpools, [numa:threads][0:32] [1:32] 
+===========In NumaPool============
+In Numa Worker Pool at NUMA 0, 32 threads
+===========In NumaPool============
+In Numa Worker Pool at NUMA 1, 32 threads
+TP MOE layer 0, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 2, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 3, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 4, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 7, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 10, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 11, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 13, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 14, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 16, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 17, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 19, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 21, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offseCPUInfer[0x564714a4de90]: Hello
+WorkerPool[0x564714b5b980] 2 subpools, [numa:threads][0:32] [1:32] 
+===========In NumaPool============
+In Numa Worker Pool at NUMA 0, 32 threads
+===========In NumaPool============
+In Numa Worker Pool at NUMA 1, 32 threads
+TP MOE layer 0, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 2, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 3, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 4, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 7, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 10, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 11, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 13, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 14, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 16, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 17, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 19, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 21, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 22, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 23, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 25, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 28, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 33, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 34, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 35, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 37, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 38, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 39, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 40, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 41, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 42, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 43, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_st=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 22, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 23, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 25, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 28, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 33, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 34, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 35, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 37, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 38, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 39, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 40, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 41, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 42, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 43, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_s
+[GGUFLoader] Loading GGUF files from directory: /data1/models/Qwen3-30B-A3B-GGUF
+  Loading: Qwen3-30B-A3B-IQ4_XS.gguf
+[GGUFLoader] Summary:
+  Files loaded: 1
+  Total tensors: 579
+  Metadata keys: 38
+ ffn_up_exps, Dtype: IQ4_XS
+ ffn_gate_exps, Dtype: IQ4_XS
+ ffn_down_exps, Dtype: IQ4_XS
+[1m[2026-11-08|16:10:19|core|rank=1][0m [32mINFO    [0m Allocating 16384 tokens for KV cache, K + V = 0.75 GiB
+
+[GGUFLoader] Loading GGUF files from directory: /data1/models/Qwen3-30B-A3B-GGUF
+  Loading: Qwen3-30B-A3B-IQ4_XS.gguf
+[GGUFLoader] Summary:
+  Files loaded: 1
+  Total tensors: 579
+  Metadata keys: 38
+ ffn_up_exps, Dtype: IQ4_XS
+ ffn_gate_exps, Dtype: IQ4_XS
+ ffn_down_exps, Dtype: IQ4_XS
+[1m[2026-11-08|16:10:19|core|rank=0][0m [32mINFO    [0m Allocating 16384 tokens for KV cache, K + V = 0.75 GiB
+[1m[2026-11-08|16:10:19|core|rank=0][0m [32mINFO    [0m Free memory after initialization: 16.68 GiB
+[1m[2026-11-08|16:10:19|core|rank=0][0m [32mINFO    [0m Start capturing CUDA graphs with sizes: [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96]
+[1m[2026-11-08|16:10:19|core|rank=0][0m [32mINFO    [0m Free GPU memory before capturing CUDA graphs: 16.68 GiB
+Preparing for capturing CUDA graphs...:   0%|          | 0/15 [00:00<?, ?batch/s]Capturing graphs: bs = 96  | avail_mem = 16.68 GiB:   0%|          | 0/15 [00:00<?, ?batch/s]Capturing graphs: bs = 96  | avail_mem = 16.68 GiB:   7%|▋         | 1/15 [01:27<20:25, 87.52s/batch]Capturing graphs: bs = 88  | avail_mem = 16.47 GiB:   7%|▋         | 1/15 [01:27<20:25, 87.52s/batch]Capturing graphs: bs = 88  | avail_mem = 16.47 GiB:  13%|█▎        | 2/15 [01:27<07:51, 36.24s/batch]Capturing graphs: bs = 80  | avail_mem = 16.44 GiB:  13%|█▎        | 2/15 [01:27<07:51, 36.24s/batch]Capturing graphs: bs = 80  | avail_mem = 16.44 GiB:  20%|██        | 3/15 [01:28<03:58, 19.86s/batch]Capturing graphs: bs = 72  | avail_mem = 16.40 GiB:  20%|██        | 3/15 [01:28<03:58, 19.86s/batch]Capturing graphs: bs = 72  | avail_mem = 16.40 GiB:  27%|██▋       | 4/15 [01:28<02:13, 12.16s/batch]Capturing graphs: bs = 64  | avail_mem = 16.35 GiB:  27%|██▋       | 4/15 [01:28<02:13, 12.16s/batch]Capturing graphs: bs = 64  | avail_mem = 16.35 GiB:  33%|███▎      | 5/15 [01:28<01:18,  7.90s/batch]Capturing graphs: bs = 56  | avail_mem = 16.31 GiB:  33%|███▎      | 5/15 [01:28<01:18,  7.90s/batch]Capturing graphs: bs = 56  | avail_mem = 16.31 GiB:  40%|████      | 6/15 [01:29<00:47,  5.33s/batch]Capturing graphs: bs = 48  | avail_mem = 16.27 GiB:  40%|████      | 6/15 [01:29<00:47,  5.33s/batch]Capturing graphs: bs = 48  | avail_mem = 16.27 GiB:  47%|████▋     | 7/15 [01:29<00:29,  3.70s/batch]Capturing graphs: bs = 40  | avail_mem = 16.23 GiB:  47%|████▋     | 7/15 [01:29<00:29,  3.70s/batch]Capturing graphs: bs = 40  | avail_mem = 16.23 GiB:  53%|█████▎    | 8/15 [01:29<00:18,  2.63s/batch]Capturing graphs: bs = 32  | avail_mem = 16.19 GiB:  53%|█████▎    | 8/15 [01:29<00:18,  2.63s/batch]Capturing graphs: bs = 32  | avail_mem = 16.19 GiB:  60%|██████    | 9/15 [01:30<00:11,  1.92s/batch]Capturing graphs: bs = 24  | avail_mem = 16.15 GiB:  60%|██████    | 9/15 [01:30<00:11,  1.92s/batch]Capturing graphs: bs = 24  | avail_mem = 16.15 GiB:  67%|██████▋   | 10/15 [01:30<00:07,  1.43s/batch]Capturing graphs: bs = 16  | avail_mem = 16.11 GiB:  67%|██████▋   | 10/15 [01:30<00:07,  1.43s/batch]Capturing graphs: bs = 16  | avail_mem = 16.11 GiB:  73%|███████▎  | 11/15 [01:30<00:04,  1.09s/batch]Capturing graphs: bs = 8   | avail_mem = 16.08 GiB:  73%|███████▎  | 11/15 [01:30<00:04,  1.09s/batch]Capturing graphs: bs = 8   | avail_mem = 16.08 GiB:  80%|████████  | 12/15 [01:31<00:02,  1.12batch/s]Capturing graphs: bs = 4   | avail_mem = 16.04 GiB:  80%|████████  | 12/15 [01:31<00:02,  1.12batch/s]Capturing graphs: bs = 4   | avail_mem = 16.04 GiB:  87%|████████▋ | 13/15 [01:31<00:01,  1.34batch/s]Capturing graphs: bs = 2   | avail_mem = 16.00 GiB:  87%|████████▋ | 13/15 [01:31<00:01,  1.34batch/s]Capturing graphs: bs = 2   | avail_mem = 16.00 GiB:  93%|█████████▎| 14/15 [01:32<00:00,  1.58batch/s]Capturing graphs: bs = 1   | avail_mem = 15.96 GiB:  93%|█████████▎| 14/15 [01:32<00:00,  1.58batch/s]Capturing graphs: bs = 1   | avail_mem = 15.96 GiB: 100%|██████████| 15/15 [01:32<00:00,  1.83batch/s]Capturing graphs: bs = 1   | avail_mem = 15.96 GiB: 100%|██████████| 15/15 [01:32<00:00,  6.17s/batch]
+[1m[2026-11-08|16:11:52|core|rank=0][0m [32mINFO    [0m Free GPU memory after capturing CUDA graphs: 15.93 GiB
+[1m[2026-11-08|16:11:52|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-11-08|16:11:52|initializer][0m [32mINFO    [0m Scheduler is ready; KV cache capacity: 16,384 tokens (16,384 pages x 1 token/page)
+[1m[2026-11-08|16:11:52|FrontendAPI][0m [32mINFO    [0m API server is ready to serve on 127.0.0.5:2000
+INFO:     Started server process [3116297]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.5:2000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38268 - "GET /v1/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58576 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58584 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58586 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58602 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58618 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58628 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58640 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58662 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58676 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58686 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58698 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58704 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58706 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58722 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58726 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50016 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50024 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50030 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50042 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50056 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50062 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50070 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50082 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50100 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50108 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50118 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50134 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50140 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50148 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50152 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50156 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50166 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50180 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50192 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50196 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50200 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50214 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50234 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50246 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50258 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50272 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50276 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50286 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50294 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50304 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50318 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50340 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50348 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50350 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50362 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50370 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50378 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50390 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50402 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+Process minisgl-TP0-scheduler:
+Traceback (most recent call last):
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/cpp_ext.py", line 433, in run_ninja
+    subprocess.run(
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['ninja', '-v', '-C', '/home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling', '-f', '/home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/build.ninja']' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/boxuan/ICS/python/minisgl/server/launch.py", line 36, in _run_scheduler
+    scheduler.run_forever()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 216, in run_forever
+    data = self.overlap_loop(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 188, in overlap_loop
+    ongoing_data = (forward_input, self._forward(forward_input))
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 377, in _forward
+    forward_output = self.engine.forward_batch(batch, sample_args)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/engine.py", line 276, in forward_batch
+    next_tokens_gpu = self.sampler.sample(logits[: batch.size], args).to(torch.int32)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/utils/torch_utils.py", line 33, in wrapper
+    return fn(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/sample.py", line 75, in sample
+    return sample_impl(logits.float(), args.temperatures, args.top_k, args.top_p)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/sample.py", line 32, in sample_impl
+    probs = sampling.softmax(logits, temperatures, enable_pdl=is_sm90_supported())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/api_logging.py", line 2369, in _auto_dump_wrapper
+    return _inner(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/sampling.py", line 1020, in softmax
+    return get_sampling_module().softmax(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/sampling.py", line 214, in get_sampling_module
+    module = gen_sampling_module().build_and_load()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/core.py", line 392, in build_and_load
+    self._timed_build()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/core.py", line 397, in _timed_build
+    self.build()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/core.py", line 640, in build
+    run_ninja(self.build_dir, self.ninja_path, verbose)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/cpp_ext.py", line 445, in run_ninja
+    raise RuntimeError(msg) from e
+RuntimeError: Ninja build failed. Ninja output:
+ninja: Entering directory `/home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling'
+[1/4]  /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/sampling.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o 
+FAILED: [code=1] /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o 
+ /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/sampling.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o 
+In file included from /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/sampling.cu:16:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include/flashinfer/sampling.cuh:20:10: fatal error: curand.h: No such file or directory
+   20 | #include <curand.h>
+      |          ^~~~~~~~~~
+compilation terminated.
+[2/4]  /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/renorm.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o 
+FAILED: [code=1] /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o 
+ /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/renorm.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o 
+In file included from /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/renorm.cu:17:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include/flashinfer/sampling.cuh:20:10: fatal error: curand.h: No such file or directory
+   20 | #include <curand.h>
+      |          ^~~~~~~~~~
+compilation terminated.
+[3/4]  /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_flashinfer_sampling_binding.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/flashinfer_sampling_binding.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_flashinfer_sampling_binding.cuda.o 
+ninja: build stopped: subcommand failed.
+
+ize=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 44, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 45, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 46, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 47, pool: 0x564abebc7b90, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+INFO:     127.0.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50420 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50436 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50448 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50454 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50476 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50478 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+Process minisgl-TP1-scheduler:
+Traceback (most recent call last):
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/cpp_ext.py", line 433, in run_ninja
+    subprocess.run(
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['ninja', '-v', '-C', '/home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling', '-f', '/home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/build.ninja']' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/boxuan/ICS/python/minisgl/server/launch.py", line 36, in _run_scheduler
+    scheduler.run_forever()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 216, in run_forever
+    data = self.overlap_loop(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 188, in overlap_loop
+    ongoing_data = (forward_input, self._forward(forward_input))
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/scheduler/scheduler.py", line 377, in _forward
+    forward_output = self.engine.forward_batch(batch, sample_args)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/engine.py", line 276, in forward_batch
+    next_tokens_gpu = self.sampler.sample(logits[: batch.size], args).to(torch.int32)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/utils/torch_utils.py", line 33, in wrapper
+    return fn(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/sample.py", line 75, in sample
+    return sample_impl(logits.float(), args.temperatures, args.top_k, args.top_p)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/ICS/python/minisgl/engine/sample.py", line 32, in sample_impl
+    probs = sampling.softmax(logits, temperatures, enable_pdl=is_sm90_supported())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/api_logging.py", line 2369, in _auto_dump_wrapper
+    return _inner(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/sampling.py", line 1020, in softmax
+    return get_sampling_module().softmax(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/sampling.py", line 214, in get_sampling_module
+    module = gen_sampling_module().build_and_load()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/core.py", line 392, in build_and_load
+    self._timed_build()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/core.py", line 397, in _timed_build
+    self.build()
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/core.py", line 640, in build
+    run_ninja(self.build_dir, self.ninja_path, verbose)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/jit/cpp_ext.py", line 445, in run_ninja
+    raise RuntimeError(msg) from e
+RuntimeError: Ninja build failed. Ninja output:
+ninja: Entering directory `/home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling'
+[1/3]  /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/sampling.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o 
+FAILED: [code=1] /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o 
+ /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/sampling.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_sampling.cuda.o 
+In file included from /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/sampling.cu:16:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include/flashinfer/sampling.cuh:20:10: fatal error: curand.h: No such file or directory
+   20 | #include <curand.h>
+      |          ^~~~~~~~~~
+compilation terminated.
+[2/3]  /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/renorm.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o 
+FAILED: [code=1] /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o 
+ /home/boxuan/miniconda3/envs/minisgl/bin/nvcc --generate-dependencies-with-compile -MF /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o.d -DPy_LIMITED_API=0x03090000 -D_GLIBCXX_USE_CXX11_ABI=1 -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/cub -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/libcudacxx/include -I/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cccl/thrust -isystem /home/boxuan/miniconda3/envs/minisgl/include/python3.11 -isystem /home/boxuan/miniconda3/envs/minisgl/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/tvm_ffi/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/cutlass/tools/util/include -isystem /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/spdlog/include --compiler-options=-fPIC --expt-relaxed-constexpr -static-global-template-stub=false -gencode=arch=compute_86,code=sm_86 -DFLASHINFER_ENABLE_FP8_E8M0 -DFLASHINFER_ENABLE_FP4_E2M1 -std=c++17 --threads=1 -use_fast_math -Xfatbin=-compress-all --compress-mode=size -DFLASHINFER_ENABLE_F16 -DFLASHINFER_ENABLE_BF16 -DFLASHINFER_ENABLE_FP8_E4M3 -DFLASHINFER_ENABLE_FP8_E5M2 -DNDEBUG -O3 -c /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/renorm.cu -o /home/boxuan/.cache/flashinfer/0.7.3/86/cached_ops/sampling/csrc_renorm.cuda.o 
+In file included from /home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/csrc/renorm.cu:17:
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/flashinfer/data/include/flashinfer/sampling.cuh:20:10: fatal error: curand.h: No such file or directory
+   20 | #include <curand.h>
+      |          ^~~~~~~~~~
+compilation terminated.
+ninja: build stopped: subcommand failed.
+
+ize=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 44, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 45, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 46, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 47, pool: 0x564714b5b980, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+INFO:     127.0.0.1:50492 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50504 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50520 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50530 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50538 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50550 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50554 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50568 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50574 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50590 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+CPUInfer[0x564abecb7110]: Goodbye
+INFO:     127.0.0.1:50592 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+CPUInfer[0x564714a4de90]: Goodbye
+INFO:     127.0.0.1:50606 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50610 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50620 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50636 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50652 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50662 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50670 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50684 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55376 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55386 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55396 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55418 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55430 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55442 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55456 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55466 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55470 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55476 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55482 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55506 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55514 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55520 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55536 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55546 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55554 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55570 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55586 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55588 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55592 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55602 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55612 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55624 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55630 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55634 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55642 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55644 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55650 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55656 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55672 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55682 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55692 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55696 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55712 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55718 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55734 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55744 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55760 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55776 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55796 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55800 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55806 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55828 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55840 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55850 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55852 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55858 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55870 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55886 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55900 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55912 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55928 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55942 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55954 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55962 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55978 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55984 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56000 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56004 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56006 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56034 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56044 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56054 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56066 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56080 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56094 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56102 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56118 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56336 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56340 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56362 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56376 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56392 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56408 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56410 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56418 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56432 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56446 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56450 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56460 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56474 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56478 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56492 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56502 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56506 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56520 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56530 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56546 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56560 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56572 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56578 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56586 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56600 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56612 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56616 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56626 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56630 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56642 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56646 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56652 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56664 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56670 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56680 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56688 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56692 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56700 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56704 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56708 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56716 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56722 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56726 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56732 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56748 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56758 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56768 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56788 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56792 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56802 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56816 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56818 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56826 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56830 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56846 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56852 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56860 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56870 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56884 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56892 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56894 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56896 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56904 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56918 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56926 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56932 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56940 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56946 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56950 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56958 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56974 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56980 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56994 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57000 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57012 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57014 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57028 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50074 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50088 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50098 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50106 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50112 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50120 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50128 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50138 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50150 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50162 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50164 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50168 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50178 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50186 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50202 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50206 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50222 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50228 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50232 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50236 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50242 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50248 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50252 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50260 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50266 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50280 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50312 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50322 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50338 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50364 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50374 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50384 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50392 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50408 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50418 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50434 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50442 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50464 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50466 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50472 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50482 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50490 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50494 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50498 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50502 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50516 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50518 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50542 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50552 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50556 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50570 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50572 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50576 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50580 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50594 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50598 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50604 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50608 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50616 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50632 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50638 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50644 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50646 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50656 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50664 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50666 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50686 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50696 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50708 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44812 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44824 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44826 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44830 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44834 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44846 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44848 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44864 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44868 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44878 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44892 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44900 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44916 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44924 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44934 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44946 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44960 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44964 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44976 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44990 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45006 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45014 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45018 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45038 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45050 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45052 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45064 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45068 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45082 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45112 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45120 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45122 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45130 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45138 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45150 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45154 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45164 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45172 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45180 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45184 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45196 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45204 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45218 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45232 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45234 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45236 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45252 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45258 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45268 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45270 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45272 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45274 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45276 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45284 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45290 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45294 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45308 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45316 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45332 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45348 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45368 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45378 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45386 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45392 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45394 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45398 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45402 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45408 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37666 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37684 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37694 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37708 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37714 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37718 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37726 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37734 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37738 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37752 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37758 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37772 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37786 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37792 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37804 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37808 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37818 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37836 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37842 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37858 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37860 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37872 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37882 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37894 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37908 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37914 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37920 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37930 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37944 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37958 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37974 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37990 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38002 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38008 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38010 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38014 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38018 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38030 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38040 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38044 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38052 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38062 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38066 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38076 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38082 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38094 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38110 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38118 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38132 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38138 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38150 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38160 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38162 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38168 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38176 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38180 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38182 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38190 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38194 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38204 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38212 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38244 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38258 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38262 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38274 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38284 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38298 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38306 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38314 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38322 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38334 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38344 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38360 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38368 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33182 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33188 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33192 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33202 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33208 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33218 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33230 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33244 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33252 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33260 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33274 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33280 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33292 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33300 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33306 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33314 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33344 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33352 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33368 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33376 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33386 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33392 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33408 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33420 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33434 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33444 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33454 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33482 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33486 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33502 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33518 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33534 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33544 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33560 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33566 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33574 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33584 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33588 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33604 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33606 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33610 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33614 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33622 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33624 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33638 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33640 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33656 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33672 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33682 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33698 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33700 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33712 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33716 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33728 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33758 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33762 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33772 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33784 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33798 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33806 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33812 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33818 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33824 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33828 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33834 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33840 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33850 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33860 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33868 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33884 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33890 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33062 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33064 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33074 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33080 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33094 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33104 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33116 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33122 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33138 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33148 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33150 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33166 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33178 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33186 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33204 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33210 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33222 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33234 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33246 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33254 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33262 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33268 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33282 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33302 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33308 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33316 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33328 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33340 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33350 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33362 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33364 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33374 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33388 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33394 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33398 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33410 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33422 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33424 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33440 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33456 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33470 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33484 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33490 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33498 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33512 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33514 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33522 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33538 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33550 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33554 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33568 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33570 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33576 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33580 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33582 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33594 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33608 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33612 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33626 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33634 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33636 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33652 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33658 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33674 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33686 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33696 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33708 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33720 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33730 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33736 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33750 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33764 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33780 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33792 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33804 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33816 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33820 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33832 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33842 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33844 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33854 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33870 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33874 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33892 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33906 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33918 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33934 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33942 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33956 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33960 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33964 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33966 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57946 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57962 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57976 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57984 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57998 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58008 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58010 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58024 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58036 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58046 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58052 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58054 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58056 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58068 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58084 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58086 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58100 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58116 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58126 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58142 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58154 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58166 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58172 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58184 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58188 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58194 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58196 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58200 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58234 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58238 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58250 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58264 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58276 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58284 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58308 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58318 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58332 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58346 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58360 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58376 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58388 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58396 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58408 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58416 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58432 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58444 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58454 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58464 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58466 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58472 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58474 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58488 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58504 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58506 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58514 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58542 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58556 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58570 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58572 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58588 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58604 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58608 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58612 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58624 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58638 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58650 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58666 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58680 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58692 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58696 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43368 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43384 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43394 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43400 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43412 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43422 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43428 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43430 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43446 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43454 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43456 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43458 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43462 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43470 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43486 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43502 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43518 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43526 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43538 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43560 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43574 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43584 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43588 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43602 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43614 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43630 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43640 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43652 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43680 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43694 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43704 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43718 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43722 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43728 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43740 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43746 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43754 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43766 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43780 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43786 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43800 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43812 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43826 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43840 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43848 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43850 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43866 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43880 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43882 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43884 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43886 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43902 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43906 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43922 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43930 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43934 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43964 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43966 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43982 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43996 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44004 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44016 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44034 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44040 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for background tasks to complete. (CTRL+C to force quit)
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 799
+INFO:     Waiting for application shutdown.
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 798
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 797
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 796
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 795
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 794
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 793
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 792
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 791
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 790
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 789
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 788
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 787
+[1m[2026-11-08|16:14:38|FrontendAPI][0m [33mWARNING [0m Aborting request for user 786
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 785
+Task exception was never retrieved
+future: <Task finished name='Task-1621' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 784
+Task exception was never retrieved
+future: <Task finished name='Task-1622' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 783
+Task exception was never retrieved
+future: <Task finished name='Task-1623' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 782
+Task exception was never retrieved
+future: <Task finished name='Task-1624' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 781
+Task exception was never retrieved
+future: <Task finished name='Task-1625' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 780
+Task exception was never retrieved
+future: <Task finished name='Task-1626' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 779
+Task exception was never retrieved
+future: <Task finished name='Task-1627' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+[1m[2026-11-08|17:26:13|FrontendAPI][0m [33mWARNING [0m Aborting request for user 778
+Task exception was never retrieved
+future: <Task finished name='Task-1628' coro=<FrontendManager.abort_user() done, defined at /home/boxuan/ICS/python/minisgl/server/api_server.py:202> exception=ZMQError('Socket operation on non-socket')>
+Traceback (most recent call last):
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 209, in abort_user
+    await self.send_one(AbortMsg(uid=uid))
+  File "/home/boxuan/ICS/python/minisgl/server/api_server.py", line 132, in send_one
+    await self.send_tokenizer.put(msg)
+  File "/home/boxuan/ICS/python/minisgl/utils/mp.py", line 47, in put
+    await self.socket.send(event, copy=False)
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/_future.py", line 542, in _add_send_event
+    r = send(msg, **nowait_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/zmq/sugar/socket.py", line 713, in send
+    return super().send(data, flags=flags, copy=copy, track=track)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "zmq/backend/cython/_zmq.py", line 1152, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1213, in zmq.backend.cython._zmq.Socket.send
+  File "zmq/backend/cython/_zmq.py", line 1473, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 1468, in zmq.backend.cython._zmq._send_copy
+  File "zmq/backend/cython/_zmq.py", line 190, in zmq.backend.cython._zmq._check_rc
+zmq.error.ZMQError: Socket operation on non-socket
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3116297]

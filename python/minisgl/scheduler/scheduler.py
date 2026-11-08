@@ -94,6 +94,12 @@ class Scheduler(SchedulerIOMixin):
     def run_when_idle(self) -> None:
         """Called when the scheduler is idle to perform background tasks."""
         logger.info_rank0("Scheduler is idle, waiting for new reqs...")
+        flush = getattr(self.cache_manager, "flush_pending_restorations", None)
+        if flush is not None:
+            flush()
+        poll = getattr(self.cache_manager, "poll_restorations", None)
+        if poll is not None:
+            poll()
         self.cache_manager.check_integrity()
 
     def overlap_loop(self, last_data: ForwardData | None) -> ForwardData | None:
@@ -107,11 +113,79 @@ class Scheduler(SchedulerIOMixin):
             last_data is not None  # don't block if we have a batch to be processed
             or self.prefill_manager.runnable
             or self.decode_manager.runnable
+            or (self.engine.expert_memory is not None and self.engine.expert_memory.fetch_events)
         )
         for msg in self.receive_msg(blocking=blocking):
             self._process_one_msg(msg)
 
-        forward_input = self._schedule_next_batch()
+        batch = self._select_next_batch()
+        if self.engine.expert_memory is not None and self.engine.expert_memory.fetch_events:
+            # KT callbacks read host masks. Publish only after previous callbacks
+            # finish on every rank, without waiting for the copy itself.
+            ready = self.engine.kt_backend.agree_fetch_completion([
+                last_data is None or last_data[1].copy_done_event.query()
+            ])[0]
+            if ready:
+                self.cache_manager.poll_restorations()
+        forward_input = None
+        if batch is not None:
+            try:
+                forward_input = self._prepare_batch(batch)
+            except Exception as exc:
+                from .expert_cache import ExpertEvictionRequired
+
+                if not isinstance(exc, ExpertEvictionRequired):
+                    raise
+                logger.info_rank0(
+                    "KV-MoE eviction slow path: batch needs %d pages; "
+                    "retiring previous batch first",
+                    exc.needed_pages,
+                )
+                # The slow path deliberately breaks overlap. Retire and free
+                # the previous batch before deciding whether eviction is still
+                # necessary. Do not start fetches until the pending batch has
+                # had a chance to reserve the newly empty buffers.
+                self._process_last_data(last_data, flush_restorations=False)
+                last_data = None
+                # No engine work is in flight now. Completed fetches may safely
+                # publish both their KT host mask and GPU mask before retrying
+                # this batch. Normal overlap deliberately does not commit here.
+                poll = getattr(self.cache_manager, "poll_restorations", None)
+                if poll is not None:
+                    poll()
+                if batch.is_decode:
+                    batch = Batch(
+                        reqs=[req for req in batch.reqs if req in self.decode_manager.running_reqs],
+                        phase="decode",
+                    )
+                if batch.reqs:
+                    try:
+                        forward_input = self._prepare_batch(batch)
+                    except ExpertEvictionRequired as retry:
+                        from .expert_cache import ExpertCapacityExhausted
+
+                        try:
+                            self.cache_manager.evict_for_batch(retry.needed_pages)
+                            forward_input = self._prepare_batch(batch)
+                        except ExpertCapacityExhausted:
+                            if not batch.is_decode:
+                                self.prefill_manager.defer_selected_batch(batch)
+                                batch = self.decode_manager.schedule_next_batch()
+                                if batch is None:
+                                    self.cache_manager.flush_pending_restorations()
+                                    return None
+                            selected = self.cache_manager.fit_decode_reqs(batch.reqs)
+                            logger.info_rank0(
+                                "KV-MoE capacity ceiling: scheduling %d/%d decode "
+                                "requests and deferring the remainder",
+                                len(selected),
+                                len(batch.reqs),
+                            )
+                            if selected:
+                                batch = Batch(reqs=selected, phase="decode")
+                                forward_input = self._prepare_batch(batch)
+                else:
+                    self.cache_manager.flush_pending_restorations()
         ongoing_data = None
         if forward_input is not None:
             with self.engine_stream_ctx:  # run the batch in the engine's stream
@@ -123,6 +197,9 @@ class Scheduler(SchedulerIOMixin):
 
     def normal_loop(self) -> None:
         blocking = not (self.prefill_manager.runnable or self.decode_manager.runnable)
+        if self.engine.expert_memory is not None and self.engine.expert_memory.fetch_events:
+            blocking = False
+            self.cache_manager.poll_restorations()
         for msg in self.receive_msg(blocking=blocking):
             self._process_one_msg(msg)
 
@@ -151,7 +228,12 @@ class Scheduler(SchedulerIOMixin):
         self.sync_all_ranks()
         self.engine.shutdown()
 
-    def _process_last_data(self, last_data: ForwardData | None) -> None:
+    def _process_last_data(
+        self,
+        last_data: ForwardData | None,
+        *,
+        flush_restorations: bool = True,
+    ) -> None:
         if last_data is None:
             return
 
@@ -160,7 +242,9 @@ class Scheduler(SchedulerIOMixin):
         batch_done_time = time.perf_counter()
         reply: List[DetokenizeMsg] = []
         new_finished_reqs: Set[Req] = set()
-        with self.cache_manager.lazy_free_region():
+        with self.cache_manager.lazy_free_region(
+            flush_restorations=flush_restorations
+        ):
             for i, req in enumerate(batch.reqs):
                 if isinstance(req, ChunkedReq):
                     continue
@@ -257,8 +341,21 @@ class Scheduler(SchedulerIOMixin):
         )
 
     def _prepare_batch(self, batch: Batch) -> ForwardInput:
-        self.engine.graph_runner.pad_batch(batch)
+        # Allocation can request the eviction slow path and therefore must be
+        # the first mutating preparation step.
         self.cache_manager.allocate_paged(batch.reqs)
+        self.engine.graph_runner.pad_batch(batch)
+        if hasattr(self.cache_manager, "uses_temporary"):
+            temporary_flags = [
+                self.cache_manager.uses_temporary(req) for req in batch.reqs
+            ]
+            for req, uses_temporary in zip(batch.reqs, temporary_flags):
+                req.uses_temporary_kv = uses_temporary
+            batch.uses_temporary_kv = any(temporary_flags)
+        else:
+            for req in batch.reqs:
+                req.uses_temporary_kv = False
+            batch.uses_temporary_kv = False
         batch.positions = _make_positions(batch, self.device)
         input_mapping = _make_input_tuple(batch, self.device)
         write_mapping = _make_write_tuple(batch, self.device)
@@ -271,13 +368,36 @@ class Scheduler(SchedulerIOMixin):
             write_tuple=write_mapping,
         )
 
-    def _schedule_next_batch(self) -> ForwardInput | None:
+    def _select_next_batch(self) -> Batch | None:
         # TODO: support other policies: e.g. DECODE first
-        batch = (
+        return (
             self.prefill_manager.schedule_next_batch(self.prefill_budget)
             or self.decode_manager.schedule_next_batch()
         )
-        return self._prepare_batch(batch) if batch else None
+
+    def _schedule_next_batch(self) -> ForwardInput | None:
+        batch = self._select_next_batch()
+        if batch is None:
+            return None
+        if self.engine.expert_memory is not None:
+            from .expert_cache import ExpertCapacityExhausted, ExpertEvictionRequired
+            self.cache_manager.poll_restorations()
+            try:
+                return self._prepare_batch(batch)
+            except ExpertEvictionRequired as exc:
+                try:
+                    self.cache_manager.evict_for_batch(exc.needed_pages)
+                except ExpertCapacityExhausted:
+                    if not batch.is_decode:
+                        self.prefill_manager.defer_selected_batch(batch)
+                        batch = self.decode_manager.schedule_next_batch()
+                    if batch is None:
+                        return None
+                    selected = self.cache_manager.fit_decode_reqs(batch.reqs)
+                    if not selected:
+                        return None
+                    batch = Batch(reqs=selected, phase="decode")
+        return self._prepare_batch(batch)
 
     def _forward(self, forward_input: ForwardInput) -> ForwardOutput:
         batch, sample_args, input_mapping, output_mapping = forward_input

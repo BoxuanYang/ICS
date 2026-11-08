@@ -1,0 +1,896 @@
+[1m[2026-11-08|16:48:27][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/data/models/Qwen3-30B-A3B', tp_info=DistributedInfo(rank=0, size=2), dtype=torch.bfloat16, max_running_req=96, attention_backend='fi', moe_backend='fused', expert_profile='./30B_experts_frequency_sorted.json', max_offload_experts_num=100, kt_weight_path='/data1/models/Qwen3-30B-A3B-GGUF', kt_cpuinfer=64, kt_threadpool_count=2, kt_method='LLAMAFILE', kt_max_deferred_experts_per_token=0, cuda_graph_bs=None, cuda_graph_max_bs=96, page_size=1, memory_ratio=0.9, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=8192, num_page_override=16384, max_extend_tokens=8192, cache_type='radix', offline_mode=False, _unique_suffix='.pid=3191727', server_host='127.0.0.5', server_port=2000, num_tokenizer=0, silent_output=False)
+[1m[2026-11-08|16:48:30|core|rank=0][0m [32mINFO    [0m KV-MoE enabled: pointer-table attention, dual CUDA graphs, and overlap scheduling
+[1m[2026-11-08|16:48:30|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[1m[2026-11-08|16:48:31|core|rank=0][0m [32mINFO    [0m Free memory before loading model: 46.96 GiB
+Loading weights:   0%|          | 0/16 [00:00<?, ?it/s]Loading weights:   6%|▋         | 1/16 [00:01<00:16,  1.12s/it]Loading weights:  12%|█▎        | 2/16 [00:02<00:16,  1.15s/it]Loading weights:  19%|█▉        | 3/16 [00:03<00:15,  1.18s/it]Loading weights:  25%|██▌       | 4/16 [00:04<00:11,  1.03it/s]Loading weights:  31%|███▏      | 5/16 [00:05<00:11,  1.05s/it]Loading weights:  38%|███▊      | 6/16 [00:06<00:10,  1.08s/it]Loading weights:  44%|████▍     | 7/16 [00:07<00:10,  1.14s/it]Loading weights:  50%|█████     | 8/16 [00:08<00:09,  1.16s/it]Loading weights:  56%|█████▋    | 9/16 [00:10<00:08,  1.18s/it]Loading weights:  62%|██████▎   | 10/16 [00:11<00:07,  1.20s/it]Loading weights:  69%|██████▉   | 11/16 [00:12<00:05,  1.20s/it]Loading weights:  75%|███████▌  | 12/16 [00:13<00:04,  1.20s/it]Loading weights:  81%|████████▏ | 13/16 [00:15<00:03,  1.20s/it]Loading weights:  88%|████████▊ | 14/16 [00:16<00:02,  1.20s/it]Loading weights:  94%|█████████▍| 15/16 [00:17<00:01,  1.21s/it]Loading weights: 100%|██████████| 16/16 [00:18<00:00,  1.21s/it]Loading weights: 100%|██████████| 16/16 [00:18<00:00,  1.16s/it]
+[1m[2026-11-08|16:48:51|core|rank=0][0m [32mINFO    [0m KT CPU expert weights: method=LLAMAFILE, path=/data1/models/Qwen3-30B-A3B-GGUF
+[1m[2026-11-08|16:48:51|core|rank=0][0m [32mINFO    [0m KT CPU executor: cpuinfer=64, threadpool_count=2, max_deferred_experts_per_token=0
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/kt_kernel/utils/loader.py:1076: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:206.)
+  data = torch.from_numpy(np.frombuffer(data_bytes, dtype=np.uint8))
+CPUInfer[0x5644d0ef20c0]: Hello
+WorkerPool[0x5644d0d67350] 2 subpools, [numa:threads][0:32] [1:32] 
+===========In NumaPool============
+In Numa Worker Pool at NUMA 0, 32 threads
+===========In NumaPool============
+In Numa Worker Pool at NUMA 1, 32 threads
+TP MOE layer 0, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 2, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 3, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 4, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 7, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 10, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 11, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 13, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 14, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 16, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 17, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 19, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 21, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 22, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 23, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 25, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 28, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 33, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 34, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 35, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 37, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 38, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 39, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 40, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 41, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 42, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 43, pool: 0x5644d0d67350, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_s/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/site-packages/kt_kernel/utils/loader.py:1076: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:206.)
+  data = torch.from_numpy(np.frombuffer(data_bytes, dtype=np.uint8))
+CPUInfer[0x55b7cbeecca0]: Hello
+WorkerPool[0x55b7ddd22f60] 2 subpools, [numa:threads][0:32] [1:32] 
+===========In NumaPool============
+In Numa Worker Pool at NUMA 0, 32 threads
+===========In NumaPool============
+In Numa Worker Pool at NUMA 1, 32 threads
+TP MOE layer 0, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 2, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 3, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 4, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 7, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 10, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 11, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 13, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 14, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 16, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 17, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 19, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 21, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 22, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 23, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 25, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 28, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 33, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 34, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 35, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 37, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 38, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 39, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 40, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 41, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 42, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_size=768, tp_count=2, block_size=256
+  num_blocks=3, base_blocks=1, extra_blocks=1
+  TP 0: intermediate_size=512, offset=0, blocks=2
+  TP 1: intermediate_size=256, offset=512, blocks=1
+TP MOE layer 43, pool: 0x55b7ddd22f60, expert num: 128, num_experts_per_tok: 8
+Llamafile TP splitting: intermediate_s
+[GGUFLoader] Loading GGUF files from directory: /data1/models/Qwen3-30B-A3B-GGUF
+  Loading: Qwen3-30B-A3B-IQ4_XS.gguf
+[GGUFLoader] Summary:
+  Files loaded: 1
+  Total tensors: 579
+  Metadata keys: 38
+ ffn_up_exps, Dtype: IQ4_XS
+ ffn_gate_exps, Dtype: IQ4_XS
+ ffn_down_exps, Dtype: IQ4_XS
+[1m[2026-11-08|16:49:00|core|rank=1][0m [32mINFO    [0m Allocating 16384 tokens for KV cache, K + V = 0.75 GiB
+
+[GGUFLoader] Loading GGUF files from directory: /data1/models/Qwen3-30B-A3B-GGUF
+  Loading: Qwen3-30B-A3B-IQ4_XS.gguf
+[GGUFLoader] Summary:
+  Files loaded: 1
+  Total tensors: 579
+  Metadata keys: 38
+ ffn_up_exps, Dtype: IQ4_XS
+ ffn_gate_exps, Dtype: IQ4_XS
+ ffn_down_exps, Dtype: IQ4_XS
+[1m[2026-11-08|16:49:00|core|rank=0][0m [32mINFO    [0m Allocating 16384 tokens for KV cache, K + V = 0.75 GiB
+[1m[2026-11-08|16:49:01|core|rank=0][0m [32mINFO    [0m Free memory after initialization: 16.68 GiB
+[1m[2026-11-08|16:49:01|core|rank=0][0m [32mINFO    [0m Start capturing CUDA graphs with sizes: [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96]
+[1m[2026-11-08|16:49:01|core|rank=0][0m [32mINFO    [0m Free GPU memory before capturing CUDA graphs: 16.68 GiB
+Preparing for capturing CUDA graphs...:   0%|          | 0/15 [00:00<?, ?batch/s]Capturing graphs: bs = 96  | avail_mem = 16.68 GiB:   0%|          | 0/15 [00:00<?, ?batch/s]Capturing graphs: bs = 96  | avail_mem = 16.68 GiB:   7%|▋         | 1/15 [00:02<00:33,  2.40s/batch]Capturing graphs: bs = 88  | avail_mem = 16.48 GiB:   7%|▋         | 1/15 [00:02<00:33,  2.40s/batch]Capturing graphs: bs = 88  | avail_mem = 16.48 GiB:  13%|█▎        | 2/15 [00:02<00:15,  1.18s/batch]Capturing graphs: bs = 80  | avail_mem = 16.44 GiB:  13%|█▎        | 2/15 [00:02<00:15,  1.18s/batch]Capturing graphs: bs = 80  | avail_mem = 16.44 GiB:  20%|██        | 3/15 [00:03<00:09,  1.27batch/s]Capturing graphs: bs = 72  | avail_mem = 16.40 GiB:  20%|██        | 3/15 [00:03<00:09,  1.27batch/s]Capturing graphs: bs = 72  | avail_mem = 16.40 GiB:  27%|██▋       | 4/15 [00:03<00:06,  1.66batch/s]Capturing graphs: bs = 64  | avail_mem = 16.36 GiB:  27%|██▋       | 4/15 [00:03<00:06,  1.66batch/s]Capturing graphs: bs = 64  | avail_mem = 16.36 GiB:  33%|███▎      | 5/15 [00:03<00:04,  2.00batch/s]Capturing graphs: bs = 56  | avail_mem = 16.33 GiB:  33%|███▎      | 5/15 [00:03<00:04,  2.00batch/s]Capturing graphs: bs = 56  | avail_mem = 16.33 GiB:  40%|████      | 6/15 [00:04<00:03,  2.28batch/s]Capturing graphs: bs = 48  | avail_mem = 16.29 GiB:  40%|████      | 6/15 [00:04<00:03,  2.28batch/s]Capturing graphs: bs = 48  | avail_mem = 16.29 GiB:  47%|████▋     | 7/15 [00:04<00:03,  2.51batch/s]Capturing graphs: bs = 40  | avail_mem = 16.25 GiB:  47%|████▋     | 7/15 [00:04<00:03,  2.51batch/s]Capturing graphs: bs = 40  | avail_mem = 16.25 GiB:  53%|█████▎    | 8/15 [00:04<00:02,  2.69batch/s]Capturing graphs: bs = 32  | avail_mem = 16.22 GiB:  53%|█████▎    | 8/15 [00:04<00:02,  2.69batch/s]Capturing graphs: bs = 32  | avail_mem = 16.22 GiB:  60%|██████    | 9/15 [00:04<00:02,  2.83batch/s]Capturing graphs: bs = 24  | avail_mem = 16.18 GiB:  60%|██████    | 9/15 [00:04<00:02,  2.83batch/s]Capturing graphs: bs = 24  | avail_mem = 16.18 GiB:  67%|██████▋   | 10/15 [00:05<00:01,  2.98batch/s]Capturing graphs: bs = 16  | avail_mem = 16.14 GiB:  67%|██████▋   | 10/15 [00:05<00:01,  2.98batch/s]Capturing graphs: bs = 16  | avail_mem = 16.14 GiB:  73%|███████▎  | 11/15 [00:05<00:01,  3.08batch/s]Capturing graphs: bs = 8   | avail_mem = 16.11 GiB:  73%|███████▎  | 11/15 [00:05<00:01,  3.08batch/s]Capturing graphs: bs = 8   | avail_mem = 16.11 GiB:  80%|████████  | 12/15 [00:05<00:00,  3.10batch/s]Capturing graphs: bs = 4   | avail_mem = 16.07 GiB:  80%|████████  | 12/15 [00:05<00:00,  3.10batch/s]Capturing graphs: bs = 4   | avail_mem = 16.07 GiB:  87%|████████▋ | 13/15 [00:06<00:00,  3.13batch/s]Capturing graphs: bs = 2   | avail_mem = 16.03 GiB:  87%|████████▋ | 13/15 [00:06<00:00,  3.13batch/s]Capturing graphs: bs = 2   | avail_mem = 16.03 GiB:  93%|█████████▎| 14/15 [00:06<00:00,  3.17batch/s]Capturing graphs: bs = 1   | avail_mem = 15.99 GiB:  93%|█████████▎| 14/15 [00:06<00:00,  3.17batch/s]Capturing graphs: bs = 1   | avail_mem = 15.99 GiB: 100%|██████████| 15/15 [00:06<00:00,  3.15batch/s]Capturing graphs: bs = 1   | avail_mem = 15.99 GiB: 100%|██████████| 15/15 [00:06<00:00,  2.21batch/s]
+[1m[2026-11-08|16:49:08|core|rank=0][0m [32mINFO    [0m Free GPU memory after capturing CUDA graphs: 15.96 GiB
+[1m[2026-11-08|16:49:08|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-11-08|16:49:08|initializer][0m [32mINFO    [0m Scheduler is ready; KV cache capacity: 16,384 tokens (16,384 pages x 1 token/page)
+[1m[2026-11-08|16:49:08|FrontendAPI][0m [32mINFO    [0m API server is ready to serve on 127.0.0.5:2000
+INFO:     Started server process [3191727]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.5:2000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:47842 - "GET /v1/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43448 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:18|core|rank=0][0m [32mINFO    [0m CUDA graph replay active: variant=pure-gpu, padded_batch_size=1
+INFO:     127.0.0.1:43468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43478 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43486 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43494 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:19|core|rank=0][0m [32mINFO    [0m Request 3 decode stats: t_decode=0.019612 s, decode_tokens=1, decode_time_per_token=19.612 ms/token, decode_speed=50.99 tokens/s
+INFO:     127.0.0.1:43478 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:19|core|rank=0][0m [32mINFO    [0m Request 5 decode stats: t_decode=0.073727 s, decode_tokens=3, decode_time_per_token=24.576 ms/token, decode_speed=40.69 tokens/s
+INFO:     127.0.0.1:43494 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43512 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:19|core|rank=0][0m [32mINFO    [0m Request 9 decode stats: t_decode=0.223585 s, decode_tokens=7, decode_time_per_token=31.941 ms/token, decode_speed=31.31 tokens/s
+[1m[2026-11-08|16:50:19|core|rank=0][0m [32mINFO    [0m Request 8 decode stats: t_decode=0.360559 s, decode_tokens=13, decode_time_per_token=27.735 ms/token, decode_speed=36.06 tokens/s
+INFO:     127.0.0.1:43496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43512 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43538 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43540 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:20|core|rank=0][0m [32mINFO    [0m Request 13 decode stats: t_decode=0.505281 s, decode_tokens=8, decode_time_per_token=63.160 ms/token, decode_speed=15.83 tokens/s
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:20|core|rank=0][0m [32mINFO    [0m Request 11 decode stats: t_decode=0.802134 s, decode_tokens=16, decode_time_per_token=50.133 ms/token, decode_speed=19.95 tokens/s
+[1m[2026-11-08|16:50:21|core|rank=0][0m [32mINFO    [0m Request 10 decode stats: t_decode=1.273387 s, decode_tokens=34, decode_time_per_token=37.453 ms/token, decode_speed=26.70 tokens/s
+[1m[2026-11-08|16:50:21|core|rank=0][0m [32mINFO    [0m Request 16 decode stats: t_decode=0.406095 s, decode_tokens=15, decode_time_per_token=27.073 ms/token, decode_speed=36.94 tokens/s
+[1m[2026-11-08|16:50:21|core|rank=0][0m [32mINFO    [0m Request 17 decode stats: t_decode=0.401628 s, decode_tokens=17, decode_time_per_token=23.625 ms/token, decode_speed=42.33 tokens/s
+INFO:     127.0.0.1:43496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:21|core|rank=0][0m [32mINFO    [0m Request 1 decode stats: t_decode=2.378258 s, decode_tokens=66, decode_time_per_token=36.034 ms/token, decode_speed=27.75 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:21|core|rank=0][0m [32mINFO    [0m Request 19 decode stats: t_decode=0.000000 s, decode_tokens=0, decode_time_per_token=N/A (completed during prefill)
+[1m[2026-11-08|16:50:21|core|rank=0][0m [32mINFO    [0m Request 18 decode stats: t_decode=0.266030 s, decode_tokens=8, decode_time_per_token=33.254 ms/token, decode_speed=30.07 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:22|core|rank=0][0m [32mINFO    [0m Request 20 decode stats: t_decode=0.175847 s, decode_tokens=4, decode_time_per_token=43.962 ms/token, decode_speed=22.75 tokens/s
+[1m[2026-11-08|16:50:22|core|rank=0][0m [32mINFO    [0m Request 22 decode stats: t_decode=0.137533 s, decode_tokens=6, decode_time_per_token=22.922 ms/token, decode_speed=43.63 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:22|core|rank=0][0m [32mINFO    [0m Request 21 decode stats: t_decode=0.466081 s, decode_tokens=16, decode_time_per_token=29.130 ms/token, decode_speed=34.33 tokens/s
+INFO:     127.0.0.1:43496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 25 decode stats: t_decode=0.356543 s, decode_tokens=10, decode_time_per_token=35.654 ms/token, decode_speed=28.05 tokens/s
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 26 decode stats: t_decode=0.572655 s, decode_tokens=19, decode_time_per_token=30.140 ms/token, decode_speed=33.18 tokens/s
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 12 decode stats: t_decode=3.233221 s, decode_tokens=91, decode_time_per_token=35.530 ms/token, decode_speed=28.15 tokens/s
+INFO:     127.0.0.1:43496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43512 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 23 decode stats: t_decode=1.144869 s, decode_tokens=31, decode_time_per_token=36.931 ms/token, decode_speed=27.08 tokens/s
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 24 decode stats: t_decode=0.827634 s, decode_tokens=27, decode_time_per_token=30.653 ms/token, decode_speed=32.62 tokens/s
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 27 decode stats: t_decode=0.842635 s, decode_tokens=29, decode_time_per_token=29.056 ms/token, decode_speed=34.42 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:23|core|rank=0][0m [32mINFO    [0m Request 33 decode stats: t_decode=0.118515 s, decode_tokens=5, decode_time_per_token=23.703 ms/token, decode_speed=42.19 tokens/s
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:24|core|rank=0][0m [32mINFO    [0m Request 34 decode stats: t_decode=0.087608 s, decode_tokens=2, decode_time_per_token=43.804 ms/token, decode_speed=22.83 tokens/s
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56660 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56674 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:24|core|rank=0][0m [32mINFO    [0m Request 0 decode stats: t_decode=5.822958 s, decode_tokens=157, decode_time_per_token=37.089 ms/token, decode_speed=26.96 tokens/s
+INFO:     127.0.0.1:43448 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56694 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:24|core|rank=0][0m [32mINFO    [0m Request 39 decode stats: t_decode=0.212765 s, decode_tokens=5, decode_time_per_token=42.553 ms/token, decode_speed=23.50 tokens/s
+[1m[2026-11-08|16:50:24|core|rank=0][0m [32mINFO    [0m Request 15 decode stats: t_decode=4.305066 s, decode_tokens=127, decode_time_per_token=33.898 ms/token, decode_speed=29.50 tokens/s
+INFO:     127.0.0.1:43540 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56674 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56710 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 45 decode stats: t_decode=0.000000 s, decode_tokens=0, decode_time_per_token=N/A (completed during prefill)
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 36 decode stats: t_decode=1.151964 s, decode_tokens=29, decode_time_per_token=39.723 ms/token, decode_speed=25.17 tokens/s
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56710 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56714 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56728 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 46 decode stats: t_decode=0.168002 s, decode_tokens=3, decode_time_per_token=56.001 ms/token, decode_speed=17.86 tokens/s
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 28 decode stats: t_decode=2.910660 s, decode_tokens=82, decode_time_per_token=35.496 ms/token, decode_speed=28.17 tokens/s
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 44 decode stats: t_decode=0.628677 s, decode_tokens=14, decode_time_per_token=44.905 ms/token, decode_speed=22.27 tokens/s
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 40 decode stats: t_decode=1.052445 s, decode_tokens=25, decode_time_per_token=42.098 ms/token, decode_speed=23.75 tokens/s
+[1m[2026-11-08|16:50:25|core|rank=0][0m [32mINFO    [0m Request 4 decode stats: t_decode=6.704082 s, decode_tokens=185, decode_time_per_token=36.238 ms/token, decode_speed=27.60 tokens/s
+INFO:     127.0.0.1:43448 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43486 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56674 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:26|core|rank=0][0m [32mINFO    [0m Request 50 decode stats: t_decode=0.493998 s, decode_tokens=10, decode_time_per_token=49.400 ms/token, decode_speed=20.24 tokens/s
+[1m[2026-11-08|16:50:26|core|rank=0][0m [32mINFO    [0m Request 51 decode stats: t_decode=0.297721 s, decode_tokens=7, decode_time_per_token=42.532 ms/token, decode_speed=23.51 tokens/s
+[1m[2026-11-08|16:50:26|core|rank=0][0m [32mINFO    [0m Request 52 decode stats: t_decode=0.245057 s, decode_tokens=7, decode_time_per_token=35.008 ms/token, decode_speed=28.56 tokens/s
+INFO:     127.0.0.1:43448 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43486 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56756 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56766 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 53 decode stats: t_decode=0.735639 s, decode_tokens=18, decode_time_per_token=40.869 ms/token, decode_speed=24.47 tokens/s
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 48 decode stats: t_decode=1.633396 s, decode_tokens=40, decode_time_per_token=40.835 ms/token, decode_speed=24.49 tokens/s
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 37 decode stats: t_decode=2.932149 s, decode_tokens=71, decode_time_per_token=41.298 ms/token, decode_speed=24.21 tokens/s
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 29 decode stats: t_decode=4.269418 s, decode_tokens=112, decode_time_per_token=38.120 ms/token, decode_speed=26.23 tokens/s
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 62 decode stats: t_decode=0.090944 s, decode_tokens=3, decode_time_per_token=30.315 ms/token, decode_speed=32.99 tokens/s
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 61 decode stats: t_decode=0.258845 s, decode_tokens=7, decode_time_per_token=36.978 ms/token, decode_speed=27.04 tokens/s
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:27|core|rank=0][0m [32mINFO    [0m Request 58 decode stats: t_decode=0.864749 s, decode_tokens=23, decode_time_per_token=37.598 ms/token, decode_speed=26.60 tokens/s
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56714 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56772 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56786 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56798 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56810 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56820 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56828 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:28|core|rank=0][0m [32mINFO    [0m Request 63 decode stats: t_decode=0.913999 s, decode_tokens=7, decode_time_per_token=130.571 ms/token, decode_speed=7.66 tokens/s
+[1m[2026-11-08|16:50:28|core|rank=0][0m [32mINFO    [0m Request 71 decode stats: t_decode=0.218864 s, decode_tokens=1, decode_time_per_token=218.864 ms/token, decode_speed=4.57 tokens/s
+INFO:     127.0.0.1:56840 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56852 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:29|core|rank=0][0m [32mINFO    [0m Request 76 decode stats: t_decode=0.092917 s, decode_tokens=2, decode_time_per_token=46.458 ms/token, decode_speed=21.52 tokens/s
+[1m[2026-11-08|16:50:29|core|rank=0][0m [32mINFO    [0m Request 66 decode stats: t_decode=1.048131 s, decode_tokens=13, decode_time_per_token=80.625 ms/token, decode_speed=12.40 tokens/s
+INFO:     127.0.0.1:56658 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:29|core|rank=0][0m [32mINFO    [0m Request 7 decode stats: t_decode=10.023279 s, decode_tokens=246, decode_time_per_token=40.745 ms/token, decode_speed=24.54 tokens/s
+INFO:     127.0.0.1:43494 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56810 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:29|core|rank=0][0m [32mINFO    [0m Request 77 decode stats: t_decode=0.775265 s, decode_tokens=22, decode_time_per_token=35.239 ms/token, decode_speed=28.38 tokens/s
+[1m[2026-11-08|16:50:30|core|rank=0][0m [32mINFO    [0m Request 2 decode stats: t_decode=11.038864 s, decode_tokens=275, decode_time_per_token=40.141 ms/token, decode_speed=24.91 tokens/s
+INFO:     127.0.0.1:43468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:30|core|rank=0][0m [32mINFO    [0m Request 81 decode stats: t_decode=0.033285 s, decode_tokens=1, decode_time_per_token=33.285 ms/token, decode_speed=30.04 tokens/s
+INFO:     127.0.0.1:43468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56852 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:30|core|rank=0][0m [32mINFO    [0m Request 64 decode stats: t_decode=2.675526 s, decode_tokens=53, decode_time_per_token=50.482 ms/token, decode_speed=19.81 tokens/s
+INFO:     127.0.0.1:43548 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56856 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:31|core|rank=0][0m [32mINFO    [0m Request 86 decode stats: t_decode=0.070172 s, decode_tokens=2, decode_time_per_token=35.086 ms/token, decode_speed=28.50 tokens/s
+INFO:     127.0.0.1:56856 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:31|core|rank=0][0m [32mINFO    [0m Request 32 decode stats: t_decode=7.456009 s, decode_tokens=168, decode_time_per_token=44.381 ms/token, decode_speed=22.53 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:31|core|rank=0][0m [32mINFO    [0m Request 67 decode stats: t_decode=3.044929 s, decode_tokens=65, decode_time_per_token=46.845 ms/token, decode_speed=21.35 tokens/s
+INFO:     127.0.0.1:56714 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:31|core|rank=0][0m [32mINFO    [0m Request 88 decode stats: t_decode=0.175888 s, decode_tokens=5, decode_time_per_token=35.178 ms/token, decode_speed=28.43 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:31|core|rank=0][0m [32mINFO    [0m Request 68 decode stats: t_decode=3.250784 s, decode_tokens=71, decode_time_per_token=45.786 ms/token, decode_speed=21.84 tokens/s
+INFO:     127.0.0.1:56772 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35580 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35596 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:32|core|rank=0][0m [32mINFO    [0m Request 92 decode stats: t_decode=0.000000 s, decode_tokens=0, decode_time_per_token=N/A (completed during prefill)
+INFO:     127.0.0.1:35580 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:32|core|rank=0][0m [32mINFO    [0m Request 90 decode stats: t_decode=0.674985 s, decode_tokens=14, decode_time_per_token=48.213 ms/token, decode_speed=20.74 tokens/s
+[1m[2026-11-08|16:50:32|core|rank=0][0m [32mINFO    [0m Request 93 decode stats: t_decode=0.105839 s, decode_tokens=2, decode_time_per_token=52.919 ms/token, decode_speed=18.90 tokens/s
+[1m[2026-11-08|16:50:32|core|rank=0][0m [32mINFO    [0m Request 41 decode stats: t_decode=7.908185 s, decode_tokens=173, decode_time_per_token=45.712 ms/token, decode_speed=21.88 tokens/s
+[1m[2026-11-08|16:50:32|core|rank=0][0m [32mINFO    [0m Request 38 decode stats: t_decode=8.373328 s, decode_tokens=187, decode_time_per_token=44.777 ms/token, decode_speed=22.33 tokens/s
+INFO:     127.0.0.1:43452 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56660 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:33|core|rank=0][0m [32mINFO    [0m Request 94 decode stats: t_decode=0.956363 s, decode_tokens=27, decode_time_per_token=35.421 ms/token, decode_speed=28.23 tokens/s
+INFO:     127.0.0.1:56678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35580 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35596 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:33|core|rank=0][0m [32mINFO    [0m Request 96 decode stats: t_decode=0.280912 s, decode_tokens=5, decode_time_per_token=56.182 ms/token, decode_speed=17.80 tokens/s
+INFO:     127.0.0.1:35598 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56660 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m Request 97 decode stats: t_decode=0.402442 s, decode_tokens=4, decode_time_per_token=100.611 ms/token, decode_speed=9.94 tokens/s
+INFO:     127.0.0.1:56678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m Request 98 decode stats: t_decode=0.438973 s, decode_tokens=5, decode_time_per_token=87.795 ms/token, decode_speed=11.39 tokens/s
+INFO:     127.0.0.1:35580 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35610 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35620 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m Request 74 decode stats: t_decode=5.615335 s, decode_tokens=126, decode_time_per_token=44.566 ms/token, decode_speed=22.44 tokens/s
+INFO:     127.0.0.1:56828 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m Request 102 decode stats: t_decode=0.212307 s, decode_tokens=3, decode_time_per_token=70.769 ms/token, decode_speed=14.13 tokens/s
+INFO:     127.0.0.1:56678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 253 pages; retiring previous batch first
+INFO:     127.0.0.1:35634 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=45 expert=97 frequency=0.000031795
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 101 pages; retiring previous batch first
+[1m[2026-11-08|16:50:34|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=14 expert=103 frequency=0.000034106
+INFO:     127.0.0.1:35646 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35650 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35664 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m CUDA graph replay active: variant=kv+moe-hybrid, padded_batch_size=48
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m Request 99 decode stats: t_decode=1.198368 s, decode_tokens=15, decode_time_per_token=79.891 ms/token, decode_speed=12.52 tokens/s
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 803 pages; retiring previous batch first
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=44 expert=74 frequency=0.000051051
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=43 expert=95 frequency=0.000057683
+INFO:     127.0.0.1:35596 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35670 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 41 pages; retiring previous batch first
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=23 expert=83 frequency=0.000060099
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 41 pages; retiring previous batch first
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=44 expert=115 frequency=0.000062321
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m Request 89 decode stats: t_decode=3.781161 s, decode_tokens=69, decode_time_per_token=54.799 ms/token, decode_speed=18.25 tokens/s
+INFO:     127.0.0.1:56714 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35686 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=0 expert=55 frequency=0.000067574
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+INFO:     127.0.0.1:35698 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35702 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=44 expert=35 frequency=0.000068649
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:35|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=19 expert=121 frequency=0.000070240
+INFO:     127.0.0.1:35708 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+INFO:     127.0.0.1:35722 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=34 expert=60 frequency=0.000072107
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+INFO:     127.0.0.1:35728 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=28 expert=86 frequency=0.000075803
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m Request 35 decode stats: t_decode=12.105704 s, decode_tokens=256, decode_time_per_token=47.288 ms/token, decode_speed=21.15 tokens/s
+INFO:     127.0.0.1:35736 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43524 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m Request 109 decode stats: t_decode=1.064017 s, decode_tokens=24, decode_time_per_token=44.334 ms/token, decode_speed=22.56 tokens/s
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=44 expert=74
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=44 expert=74 frequency=0.000051051
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=16 expert=86 frequency=0.000076257
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m Request 107 decode stats: t_decode=1.819141 s, decode_tokens=32, decode_time_per_token=56.848 ms/token, decode_speed=17.59 tokens/s
+INFO:     127.0.0.1:56678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35646 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35746 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m Request 70 decode stats: t_decode=8.276730 s, decode_tokens=167, decode_time_per_token=49.561 ms/token, decode_speed=20.18 tokens/s
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 535 pages; retiring previous batch first
+[1m[2026-11-08|16:50:36|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=39 expert=68 frequency=0.000080862
+[1m[2026-11-08|16:50:37|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 39 pages; retiring previous batch first
+[1m[2026-11-08|16:50:37|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=40 expert=86 frequency=0.000081239
+INFO:     127.0.0.1:56798 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35752 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35768 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35770 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35778 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35784 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35790 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35798 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35802 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35816 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35832 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35836 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35842 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35854 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35856 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35870 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35880 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35892 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35900 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35916 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35926 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35932 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35936 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35946 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35962 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35970 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35974 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35984 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35986 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35998 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36012 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36030 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36044 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36056 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36068 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36078 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36082 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57238 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57248 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57262 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57268 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57280 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57286 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57302 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:42|core|rank=0][0m [32mINFO    [0m ICS profile:
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                       fused_moe_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     604.471ms        63.84%     604.471ms     299.837us          2016  
+                                          _gather_dense         0.00%       0.000us         0.00%       0.000us       0.000us      64.061ms         6.77%      64.061ms      63.553us          1008  
+ncclSymDevKernel_AllReduce_RSxLD_AGxST_sum_bf16(nccl...         0.00%       0.000us         0.00%       0.000us       0.000us      56.678ms         5.99%      56.678ms      27.824us          2037  
+void flashinfer::BatchPrefillWithPagedKVCacheKernel<...         0.00%       0.000us         0.00%       0.000us       0.000us      35.772ms         3.78%      35.772ms      39.223us           912  
+ampere_bf16_s16816gemm_bf16_64x64_ldg8_f2f_stages_64...         0.00%       0.000us         0.00%       0.000us       0.000us      22.774ms         2.41%      22.774ms      12.159us          1873  
+                                            aten::copy_         0.90%       8.231ms         2.14%      19.663ms      17.779us      17.352ms         1.83%      17.354ms      15.690us          1106  
+                                               aten::mm         0.98%       9.022ms         1.33%      12.170ms      41.967us      15.787ms         1.67%      15.787ms      54.438us           290  
+      ampere_s16816gemm_bf16_128x64_ldg8_stages_64x3_tn         0.00%       0.000us         0.00%       0.000us       0.000us      15.218ms         1.61%      15.218ms      16.686us           912  
+                         Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us      13.481ms         1.42%      13.481ms       6.829us          1974  
+                         Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us      13.452ms         1.42%      13.452ms      15.183us           886  
+ampere_bf16_s1688gemm_bf16_128x128_ldg8_f2f_stages_3...         0.00%       0.000us         0.00%       0.000us       0.000us      11.487ms         1.21%      11.487ms      79.768us           144  
+ampere_bf16_s16816gemm_bf16_128x64_ldg8_f2f_stages_3...         0.00%       0.000us         0.00%       0.000us       0.000us       8.912ms         0.94%       8.912ms     469.030us            19  
+kernel_cutlass_kernel_flashinfernormkernelsfused_add...         0.00%       0.000us         0.00%       0.000us       0.000us       8.101ms         0.86%       8.101ms       4.018us          2016  
+void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       7.481ms         0.79%       7.481ms       3.644us          2053  
+                                  moe_sum_reduce_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       6.990ms         0.74%       6.990ms       6.934us          1008  
+ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsSto...         0.00%       0.000us         0.00%       0.000us       0.000us       6.469ms         0.68%       6.469ms     308.068us            21  
+void flashinfer::PersistentVariableLengthMergeStates...         0.00%       0.000us         0.00%       0.000us       0.000us       5.557ms         0.59%       5.557ms       5.789us           960  
+                                            aten::fill_         7.48%      68.685ms         7.73%      70.958ms      40.022us       5.176ms         0.55%       5.176ms       2.919us          1773  
+void at::native::elementwise_kernel<128, 4, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us       4.928ms         0.52%       4.928ms       2.420us          2036  
+                                          memcpy32_post         0.00%       0.000us         0.00%       0.000us       0.000us       4.854ms         0.51%       4.854ms       1.135us          4275  
+kernel_cutlass_kernel_flashinfernormkernelsrmsnormQK...         0.00%       0.000us         0.00%       0.000us       0.000us       4.199ms         0.44%       4.199ms       2.083us          2016  
+void flashinfer::BatchPrefillWithPagedKVCacheKernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       4.192ms         0.44%       4.192ms      43.669us            96  
+void topkGatingSoftmax<float, 4, 128, 4, 16>(float c...         0.00%       0.000us         0.00%       0.000us       0.000us       4.099ms         0.43%       4.099ms       4.067us          1008  
+void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us       3.838ms         0.41%       3.838ms       3.730us          1029  
+void flashinfer::activation::act_and_mul_kernel<__nv...         0.00%       0.000us         0.00%       0.000us       0.000us       3.633ms         0.38%       3.633ms       3.604us          1008  
+void moe_align_block_size_kernel<int>(int const*, in...         0.00%       0.000us         0.00%       0.000us       0.000us       3.309ms         0.35%       3.309ms       3.283us          1008  
+void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us       3.100ms         0.33%       3.100ms       2.341us          1324  
+void flashinfer::BatchQKApplyRotaryPosIdsCosSinCache...         0.00%       0.000us         0.00%       0.000us       0.000us       2.500ms         0.26%       2.500ms       2.480us          1008  
+void cublasLt::splitKreduce_kernel<32, 16, int, floa...         0.00%       0.000us         0.00%       0.000us       0.000us       2.370ms         0.25%       2.370ms       2.599us           912  
+void at::native::reduce_kernel<512, 1, at::native::R...         0.00%       0.000us         0.00%       0.000us       0.000us       2.233ms         0.24%       2.233ms       2.216us          1008  
+ampere_bf16_s16816gemm_bf16_128x128_ldg8_f2f_stages_...         0.00%       0.000us         0.00%       0.000us       0.000us       2.073ms         0.22%       2.073ms      43.197us            48  
+                         Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       2.041ms         0.22%       2.041ms       3.794us           538  
+void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.963ms         0.21%       1.963ms       3.015us           651  
+                                                 _store         0.00%       0.000us         0.00%       0.000us       0.000us       1.819ms         0.19%       1.819ms       1.804us          1008  
+void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.814ms         0.19%       1.814ms       2.787us           651  
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 918.349ms
+Self CUDA time total: 946.838ms
+
+INFO:     127.0.0.1:57314 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57324 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:42|core|rank=0][0m [32mINFO    [0m Request 43 decode stats: t_decode=17.389634 s, decode_tokens=244, decode_time_per_token=71.269 ms/token, decode_speed=14.03 tokens/s
+INFO:     127.0.0.1:57332 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43540 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57346 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:42|core|rank=0][0m [32mINFO    [0m Request 31 decode stats: t_decode=19.094975 s, decode_tokens=290, decode_time_per_token=65.845 ms/token, decode_speed=15.19 tokens/s
+INFO:     127.0.0.1:43512 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:42|core|rank=0][0m [32mINFO    [0m Request 72 decode stats: t_decode=13.985050 s, decode_tokens=175, decode_time_per_token=79.915 ms/token, decode_speed=12.51 tokens/s
+INFO:     127.0.0.1:56820 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:43|core|rank=0][0m [32mINFO    [0m Request 116 decode stats: t_decode=0.087768 s, decode_tokens=2, decode_time_per_token=43.884 ms/token, decode_speed=22.79 tokens/s
+INFO:     127.0.0.1:35686 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57348 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:43|core|rank=0][0m [32mINFO    [0m Request 111 decode stats: t_decode=6.845263 s, decode_tokens=23, decode_time_per_token=297.620 ms/token, decode_speed=3.36 tokens/s
+[1m[2026-11-08|16:50:43|core|rank=0][0m [32mINFO    [0m Request 117 decode stats: t_decode=0.436833 s, decode_tokens=7, decode_time_per_token=62.405 ms/token, decode_speed=16.02 tokens/s
+INFO:     127.0.0.1:57364 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35664 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35698 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57380 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57390 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57394 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57408 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:43|core|rank=0][0m [32mINFO    [0m Request 104 decode stats: t_decode=9.312339 s, decode_tokens=64, decode_time_per_token=145.505 ms/token, decode_speed=6.87 tokens/s
+[1m[2026-11-08|16:50:43|core|rank=0][0m [32mINFO    [0m Request 112 decode stats: t_decode=6.856617 s, decode_tokens=24, decode_time_per_token=285.692 ms/token, decode_speed=3.50 tokens/s
+INFO:     127.0.0.1:35596 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35610 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57424 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57432 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57438 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57440 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57448 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57460 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:44|core|rank=0][0m [32mINFO    [0m Request 83 decode stats: t_decode=14.138866 s, decode_tokens=163, decode_time_per_token=86.742 ms/token, decode_speed=11.53 tokens/s
+INFO:     127.0.0.1:43532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=0 expert=10 frequency=0.000083744
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m Request 106 decode stats: t_decode=10.560947 s, decode_tokens=90, decode_time_per_token=117.344 ms/token, decode_speed=8.52 tokens/s
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 266 pages; retiring previous batch first
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=45 expert=57 frequency=0.000083760
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=3 expert=83 frequency=0.000084774
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=35 expert=83 frequency=0.000087473
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=46 expert=59 frequency=0.000088625
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m Request 59 decode stats: t_decode=18.417395 s, decode_tokens=252, decode_time_per_token=73.085 ms/token, decode_speed=13.68 tokens/s
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 442 pages; retiring previous batch first
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=40 expert=96 frequency=0.000089362
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 40 pages; retiring previous batch first
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=13 expert=116 frequency=0.000095363
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m Request 113 decode stats: t_decode=3.185994 s, decode_tokens=54, decode_time_per_token=59.000 ms/token, decode_speed=16.95 tokens/s
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m Request 124 decode stats: t_decode=0.244298 s, decode_tokens=4, decode_time_per_token=61.074 ms/token, decode_speed=16.37 tokens/s
+[1m[2026-11-08|16:50:45|core|rank=0][0m [32mINFO    [0m Request 91 decode stats: t_decode=13.773918 s, decode_tokens=147, decode_time_per_token=93.700 ms/token, decode_speed=10.67 tokens/s
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 39 pages; retiring previous batch first
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=25 expert=56 frequency=0.000095940
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m Request 126 decode stats: t_decode=0.134526 s, decode_tokens=3, decode_time_per_token=44.842 ms/token, decode_speed=22.30 tokens/s
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m Request 60 decode stats: t_decode=19.106025 s, decode_tokens=261, decode_time_per_token=73.203 ms/token, decode_speed=13.66 tokens/s
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m Request 65 decode stats: t_decode=18.339605 s, decode_tokens=239, decode_time_per_token=76.735 ms/token, decode_speed=13.03 tokens/s
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 774 pages; retiring previous batch first
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=41 expert=114 frequency=0.000102185
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m Request 128 decode stats: t_decode=0.000000 s, decode_tokens=0, decode_time_per_token=N/A (completed during prefill)
+[1m[2026-11-08|16:50:46|core|rank=0][0m [32mINFO    [0m Request 123 decode stats: t_decode=1.660849 s, decode_tokens=23, decode_time_per_token=72.211 ms/token, decode_speed=13.85 tokens/s
+[1m[2026-11-08|16:50:47|core|rank=0][0m [32mINFO    [0m Request 57 decode stats: t_decode=20.478040 s, decode_tokens=283, decode_time_per_token=72.361 ms/token, decode_speed=13.82 tokens/s
+[1m[2026-11-08|16:50:47|core|rank=0][0m [32mINFO    [0m Request 85 decode stats: t_decode=16.402788 s, decode_tokens=198, decode_time_per_token=82.842 ms/token, decode_speed=12.07 tokens/s
+[1m[2026-11-08|16:50:47|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=45 expert=57
+[1m[2026-11-08|16:50:47|core|rank=0][0m [32mINFO    [0m Request 129 decode stats: t_decode=0.710088 s, decode_tokens=15, decode_time_per_token=47.339 ms/token, decode_speed=21.12 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 6 decode stats: t_decode=28.733279 s, decode_tokens=502, decode_time_per_token=57.238 ms/token, decode_speed=17.47 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 30 decode stats: t_decode=24.675216 s, decode_tokens=384, decode_time_per_token=64.258 ms/token, decode_speed=15.56 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 75 decode stats: t_decode=19.226646 s, decode_tokens=261, decode_time_per_token=73.665 ms/token, decode_speed=13.57 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 132 decode stats: t_decode=0.655754 s, decode_tokens=13, decode_time_per_token=50.443 ms/token, decode_speed=19.82 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 79 decode stats: t_decode=19.110141 s, decode_tokens=256, decode_time_per_token=74.649 ms/token, decode_speed=13.40 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 101 decode stats: t_decode=14.717038 s, decode_tokens=158, decode_time_per_token=93.146 ms/token, decode_speed=10.74 tokens/s
+[1m[2026-11-08|16:50:48|core|rank=0][0m [32mINFO    [0m Request 121 decode stats: t_decode=4.868489 s, decode_tokens=88, decode_time_per_token=55.324 ms/token, decode_speed=18.08 tokens/s
+[1m[2026-11-08|16:50:49|core|rank=0][0m [32mINFO    [0m Request 122 decode stats: t_decode=5.046419 s, decode_tokens=90, decode_time_per_token=56.071 ms/token, decode_speed=17.83 tokens/s
+[1m[2026-11-08|16:50:49|core|rank=0][0m [32mINFO    [0m Request 127 decode stats: t_decode=3.008186 s, decode_tokens=56, decode_time_per_token=53.718 ms/token, decode_speed=18.62 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 78 decode stats: t_decode=20.628970 s, decode_tokens=289, decode_time_per_token=71.381 ms/token, decode_speed=14.01 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 139 decode stats: t_decode=0.461039 s, decode_tokens=11, decode_time_per_token=41.913 ms/token, decode_speed=23.86 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 42 decode stats: t_decode=25.415405 s, decode_tokens=387, decode_time_per_token=65.673 ms/token, decode_speed=15.23 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 136 decode stats: t_decode=1.124002 s, decode_tokens=23, decode_time_per_token=48.870 ms/token, decode_speed=20.46 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 56 decode stats: t_decode=23.571062 s, decode_tokens=341, decode_time_per_token=69.123 ms/token, decode_speed=14.47 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 80 decode stats: t_decode=20.677032 s, decode_tokens=285, decode_time_per_token=72.551 ms/token, decode_speed=13.78 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 84 decode stats: t_decode=19.928312 s, decode_tokens=266, decode_time_per_token=74.918 ms/token, decode_speed=13.35 tokens/s
+[1m[2026-11-08|16:50:50|core|rank=0][0m [32mINFO    [0m Request 118 decode stats: t_decode=7.797194 s, decode_tokens=140, decode_time_per_token=55.694 ms/token, decode_speed=17.96 tokens/s
+[1m[2026-11-08|16:50:51|core|rank=0][0m [32mINFO    [0m Request 143 decode stats: t_decode=1.080756 s, decode_tokens=21, decode_time_per_token=51.465 ms/token, decode_speed=19.43 tokens/s
+[1m[2026-11-08|16:50:51|core|rank=0][0m [32mINFO    [0m Request 133 decode stats: t_decode=3.078194 s, decode_tokens=61, decode_time_per_token=50.462 ms/token, decode_speed=19.82 tokens/s
+[1m[2026-11-08|16:50:51|core|rank=0][0m [32mINFO    [0m Request 119 decode stats: t_decode=8.547676 s, decode_tokens=158, decode_time_per_token=54.099 ms/token, decode_speed=18.48 tokens/s
+[1m[2026-11-08|16:50:51|core|rank=0][0m [32mINFO    [0m Request 140 decode stats: t_decode=2.164393 s, decode_tokens=45, decode_time_per_token=48.098 ms/token, decode_speed=20.79 tokens/s
+[1m[2026-11-08|16:50:51|core|rank=0][0m [32mINFO    [0m Request 115 decode stats: t_decode=8.852071 s, decode_tokens=162, decode_time_per_token=54.642 ms/token, decode_speed=18.30 tokens/s
+[1m[2026-11-08|16:50:52|core|rank=0][0m [32mINFO    [0m Request 55 decode stats: t_decode=25.753087 s, decode_tokens=393, decode_time_per_token=65.529 ms/token, decode_speed=15.26 tokens/s
+[1m[2026-11-08|16:50:52|core|rank=0][0m [32mINFO    [0m Request 108 decode stats: t_decode=17.889194 s, decode_tokens=227, decode_time_per_token=78.807 ms/token, decode_speed=12.69 tokens/s
+[1m[2026-11-08|16:50:53|core|rank=0][0m [32mINFO    [0m Request 145 decode stats: t_decode=2.697728 s, decode_tokens=56, decode_time_per_token=48.174 ms/token, decode_speed=20.76 tokens/s
+[1m[2026-11-08|16:50:53|core|rank=0][0m [32mINFO    [0m Request 125 decode stats: t_decode=7.903893 s, decode_tokens=152, decode_time_per_token=51.999 ms/token, decode_speed=19.23 tokens/s
+[1m[2026-11-08|16:50:54|core|rank=0][0m [32mINFO    [0m Request 152 decode stats: t_decode=1.179943 s, decode_tokens=30, decode_time_per_token=39.331 ms/token, decode_speed=25.42 tokens/s
+[1m[2026-11-08|16:50:54|core|rank=0][0m [32mINFO    [0m Request 153 decode stats: t_decode=0.000000 s, decode_tokens=0, decode_time_per_token=N/A (completed during prefill)
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m Request 87 decode stats: t_decode=23.852248 s, decode_tokens=348, decode_time_per_token=68.541 ms/token, decode_speed=14.59 tokens/s
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m Request 142 decode stats: t_decode=4.817722 s, decode_tokens=101, decode_time_per_token=47.700 ms/token, decode_speed=20.96 tokens/s
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 879 pages; retiring previous batch first
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=45 expert=57 frequency=0.000083760
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=46 expert=95 frequency=0.000102883
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 30 pages; retiring previous batch first
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=40 expert=56 frequency=0.000103381
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m Request 155 decode stats: t_decode=0.044551 s, decode_tokens=1, decode_time_per_token=44.551 ms/token, decode_speed=22.45 tokens/s
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m Request 151 decode stats: t_decode=2.900171 s, decode_tokens=60, decode_time_per_token=48.336 ms/token, decode_speed=20.69 tokens/s
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 30 pages; retiring previous batch first
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=45 expert=57
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=45 expert=57 frequency=0.000083760
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 30 pages; retiring previous batch first
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=45 expert=96 frequency=0.000103592
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m Request 146 decode stats: t_decode=5.415079 s, decode_tokens=109, decode_time_per_token=49.680 ms/token, decode_speed=20.13 tokens/s
+[1m[2026-11-08|16:50:55|core|rank=0][0m [32mINFO    [0m Request 157 decode stats: t_decode=0.292625 s, decode_tokens=7, decode_time_per_token=41.804 ms/token, decode_speed=23.92 tokens/s
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m Request 114 decode stats: t_decode=13.264533 s, decode_tokens=245, decode_time_per_token=54.141 ms/token, decode_speed=18.47 tokens/s
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 29 pages; retiring previous batch first
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=7 expert=121 frequency=0.000103786
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m Request 156 decode stats: t_decode=0.906997 s, decode_tokens=15, decode_time_per_token=60.466 ms/token, decode_speed=16.54 tokens/s
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m Request 73 decode stats: t_decode=27.605580 s, decode_tokens=427, decode_time_per_token=64.650 ms/token, decode_speed=15.47 tokens/s
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m Request 158 decode stats: t_decode=0.849691 s, decode_tokens=16, decode_time_per_token=53.106 ms/token, decode_speed=18.83 tokens/s
+[1m[2026-11-08|16:50:56|core|rank=0][0m [32mINFO    [0m Request 159 decode stats: t_decode=0.702462 s, decode_tokens=15, decode_time_per_token=46.831 ms/token, decode_speed=21.35 tokens/s
+[1m[2026-11-08|16:50:57|core|rank=0][0m [32mINFO    [0m Request 82 decode stats: t_decode=26.785338 s, decode_tokens=401, decode_time_per_token=66.796 ms/token, decode_speed=14.97 tokens/s
+[1m[2026-11-08|16:50:57|core|rank=0][0m [32mINFO    [0m Request 54 decode stats: t_decode=31.274972 s, decode_tokens=497, decode_time_per_token=62.928 ms/token, decode_speed=15.89 tokens/s
+[1m[2026-11-08|16:50:58|core|rank=0][0m [32mINFO    [0m Request 47 decode stats: t_decode=33.437321 s, decode_tokens=551, decode_time_per_token=60.685 ms/token, decode_speed=16.48 tokens/s
+[1m[2026-11-08|16:50:59|core|rank=0][0m [32mINFO    [0m Request 141 decode stats: t_decode=10.090721 s, decode_tokens=210, decode_time_per_token=48.051 ms/token, decode_speed=20.81 tokens/s
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m Request 164 decode stats: t_decode=2.857510 s, decode_tokens=72, decode_time_per_token=39.688 ms/token, decode_speed=25.20 tokens/s
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m Request 154 decode stats: t_decode=5.912244 s, decode_tokens=128, decode_time_per_token=46.189 ms/token, decode_speed=21.65 tokens/s
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 1229 pages; retiring previous batch first
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=44 expert=87 frequency=0.000104013
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=2 expert=105 frequency=0.000104235
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=42 expert=122 frequency=0.000105986
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=38 expert=35 frequency=0.000106418
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=47 expert=40 frequency=0.000106939
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=44 expert=85 frequency=0.000107571
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 25 pages; retiring previous batch first
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=46 expert=58 frequency=0.000110435
+[1m[2026-11-08|16:51:00|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 25 pages; retiring previous batch first
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=37 expert=116 frequency=0.000110469
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 25 pages; retiring previous batch first
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=46 expert=24 frequency=0.000110723
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 25 pages; retiring previous batch first
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=41 expert=107 frequency=0.000111056
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m Request 105 decode stats: t_decode=26.812121 s, decode_tokens=412, decode_time_per_token=65.078 ms/token, decode_speed=15.37 tokens/s
+[1m[2026-11-08|16:51:01|core|rank=0][0m [32mINFO    [0m Request 14 decode stats: t_decode=40.963513 s, decode_tokens=746, decode_time_per_token=54.911 ms/token, decode_speed=18.21 tokens/s
+[1m[2026-11-08|16:51:02|core|rank=0][0m [32mINFO    [0m Request 169 decode stats: t_decode=0.160468 s, decode_tokens=4, decode_time_per_token=40.117 ms/token, decode_speed=24.93 tokens/s
+[1m[2026-11-08|16:51:02|core|rank=0][0m [32mINFO    [0m Request 167 decode stats: t_decode=0.575591 s, decode_tokens=12, decode_time_per_token=47.966 ms/token, decode_speed=20.85 tokens/s
+[1m[2026-11-08|16:51:02|core|rank=0][0m [32mINFO    [0m Request 174 decode stats: t_decode=0.817866 s, decode_tokens=16, decode_time_per_token=51.117 ms/token, decode_speed=19.56 tokens/s
+[1m[2026-11-08|16:51:02|core|rank=0][0m [32mINFO    [0m Request 168 decode stats: t_decode=1.108290 s, decode_tokens=23, decode_time_per_token=48.187 ms/token, decode_speed=20.75 tokens/s
+[1m[2026-11-08|16:51:03|core|rank=0][0m [32mINFO    [0m Request 172 decode stats: t_decode=1.190828 s, decode_tokens=25, decode_time_per_token=47.633 ms/token, decode_speed=20.99 tokens/s
+[1m[2026-11-08|16:51:03|core|rank=0][0m [32mINFO    [0m Request 179 decode stats: t_decode=0.301415 s, decode_tokens=7, decode_time_per_token=43.059 ms/token, decode_speed=23.22 tokens/s
+[1m[2026-11-08|16:51:03|core|rank=0][0m [32mINFO    [0m Request 176 decode stats: t_decode=2.054619 s, decode_tokens=43, decode_time_per_token=47.782 ms/token, decode_speed=20.93 tokens/s
+[1m[2026-11-08|16:51:04|core|rank=0][0m [32mINFO    [0m Request 147 decode stats: t_decode=13.676349 s, decode_tokens=282, decode_time_per_token=48.498 ms/token, decode_speed=20.62 tokens/s
+[1m[2026-11-08|16:51:04|core|rank=0][0m [32mINFO    [0m Request 181 decode stats: t_decode=0.000000 s, decode_tokens=0, decode_time_per_token=N/A (completed during prefill)
+[1m[2026-11-08|16:51:05|core|rank=0][0m [32mINFO    [0m Request 162 decode stats: t_decode=8.278605 s, decode_tokens=179, decode_time_per_token=46.249 ms/token, decode_speed=21.62 tokens/s
+[1m[2026-11-08|16:51:05|core|rank=0][0m [32mINFO    [0m Request 149 decode stats: t_decode=13.074051 s, decode_tokens=274, decode_time_per_token=47.716 ms/token, decode_speed=20.96 tokens/s
+[1m[2026-11-08|16:51:05|core|rank=0][0m [32mINFO    [0m Request 150 decode stats: t_decode=13.453581 s, decode_tokens=276, decode_time_per_token=48.745 ms/token, decode_speed=20.51 tokens/s
+[1m[2026-11-08|16:51:06|core|rank=0][0m [32mINFO    [0m Request 137 decode stats: t_decode=17.087310 s, decode_tokens=346, decode_time_per_token=49.385 ms/token, decode_speed=20.25 tokens/s
+[1m[2026-11-08|16:51:06|core|rank=0][0m [32mINFO    [0m Request 180 decode stats: t_decode=3.374573 s, decode_tokens=67, decode_time_per_token=50.367 ms/token, decode_speed=19.85 tokens/s
+[1m[2026-11-08|16:51:06|core|rank=0][0m [32mINFO    [0m Request 166 decode stats: t_decode=5.444624 s, decode_tokens=104, decode_time_per_token=52.352 ms/token, decode_speed=19.10 tokens/s
+[1m[2026-11-08|16:51:06|core|rank=0][0m [32mINFO    [0m Request 185 decode stats: t_decode=0.833599 s, decode_tokens=18, decode_time_per_token=46.311 ms/token, decode_speed=21.59 tokens/s
+[1m[2026-11-08|16:51:07|core|rank=0][0m [32mINFO    [0m Request 171 decode stats: t_decode=5.700684 s, decode_tokens=114, decode_time_per_token=50.006 ms/token, decode_speed=20.00 tokens/s
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m Request 69 decode stats: t_decode=39.648833 s, decode_tokens=668, decode_time_per_token=59.355 ms/token, decode_speed=16.85 tokens/s
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 790 pages; retiring previous batch first
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=45 expert=61 frequency=0.000113256
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m Request 130 decode stats: t_decode=21.606637 s, decode_tokens=432, decode_time_per_token=50.015 ms/token, decode_speed=19.99 tokens/s
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m Request 191 decode stats: t_decode=0.773514 s, decode_tokens=15, decode_time_per_token=51.568 ms/token, decode_speed=19.39 tokens/s
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m Request 193 decode stats: t_decode=0.164157 s, decode_tokens=4, decode_time_per_token=41.039 ms/token, decode_speed=24.37 tokens/s
+[1m[2026-11-08|16:51:08|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 33 pages; retiring previous batch first
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=42 expert=51 frequency=0.000113256
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m Request 183 decode stats: t_decode=3.110672 s, decode_tokens=58, decode_time_per_token=53.632 ms/token, decode_speed=18.65 tokens/s
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m Request 194 decode stats: t_decode=0.654021 s, decode_tokens=13, decode_time_per_token=50.309 ms/token, decode_speed=19.88 tokens/s
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m Request 134 decode stats: t_decode=20.862843 s, decode_tokens=417, decode_time_per_token=50.031 ms/token, decode_speed=19.99 tokens/s
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m KV-MoE eviction slow path: batch needs 33 pages; retiring previous batch first
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m KV-MoE evict layer=21 expert=109 frequency=0.000113400
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m Request 198 decode stats: t_decode=0.275839 s, decode_tokens=4, decode_time_per_token=68.960 ms/token, decode_speed=14.50 tokens/s
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m Request 138 decode stats: t_decode=20.037102 s, decode_tokens=399, decode_time_per_token=50.218 ms/token, decode_speed=19.91 tokens/s
+[1m[2026-11-08|16:51:09|core|rank=0][0m [32mINFO    [0m Request 190 decode stats: t_decode=2.067706 s, decode_tokens=38, decode_time_per_token=54.413 ms/token, decode_speed=18.38 tokens/s
+[1m[2026-11-08|16:51:10|core|rank=0][0m [32mINFO    [0m Request 187 decode stats: t_decode=2.931157 s, decode_tokens=55, decode_time_per_token=53.294 ms/token, decode_speed=18.76 tokens/s
+[1m[2026-11-08|16:51:10|core|rank=0][0m [32mINFO    [0m Request 195 decode stats: t_decode=1.871792 s, decode_tokens=37, decode_time_per_token=50.589 ms/token, decode_speed=19.77 tokens/s
+[1m[2026-11-08|16:51:10|core|rank=0][0m [32mINFO    [0m Request 148 decode stats: t_decode=19.608777 s, decode_tokens=396, decode_time_per_token=49.517 ms/token, decode_speed=20.20 tokens/s
+[1m[2026-11-08|16:51:11|core|rank=0][0m [32mINFO    [0m Request 197 decode stats: t_decode=1.802808 s, decode_tokens=42, decode_time_per_token=42.924 ms/token, decode_speed=23.30 tokens/s
+[1m[2026-11-08|16:51:11|core|rank=0][0m [32mINFO    [0m Request 199 decode stats: t_decode=1.693127 s, decode_tokens=42, decode_time_per_token=40.313 ms/token, decode_speed=24.81 tokens/s
+[1m[2026-11-08|16:51:11|core|rank=0][0m [32mINFO    [0m Request 49 decode stats: t_decode=46.087044 s, decode_tokens=808, decode_time_per_token=57.038 ms/token, decode_speed=17.53 tokens/s
+[1m[2026-11-08|16:51:12|core|rank=0][0m [32mINFO    [0m Request 196 decode stats: t_decode=3.318180 s, decode_tokens=77, decode_time_per_token=43.093 ms/token, decode_speed=23.21 tokens/s
+[1m[2026-11-08|16:51:12|core|rank=0][0m [32mINFO    [0m Request 188 decode stats: t_decode=5.406079 s, decode_tokens=118, decode_time_per_token=45.814 ms/token, decode_speed=21.83 tokens/s
+[1m[2026-11-08|16:51:13|core|rank=0][0m [32mINFO    [0m Request 144 decode stats: t_decode=23.074526 s, decode_tokens=481, decode_time_per_token=47.972 ms/token, decode_speed=20.85 tokens/s
+[1m[2026-11-08|16:51:13|core|rank=0][0m [32mINFO    [0m Request 186 decode stats: t_decode=7.107013 s, decode_tokens=158, decode_time_per_token=44.981 ms/token, decode_speed=22.23 tokens/s
+[1m[2026-11-08|16:51:13|core|rank=0][0m [32mINFO    [0m Request 173 decode stats: t_decode=11.614552 s, decode_tokens=246, decode_time_per_token=47.214 ms/token, decode_speed=21.18 tokens/s
+[1m[2026-11-08|16:51:14|core|rank=0][0m [32mINFO    [0m Request 103 decode stats: t_decode=40.275612 s, decode_tokens=697, decode_time_per_token=57.784 ms/token, decode_speed=17.31 tokens/s
+[1m[2026-11-08|16:51:16|core|rank=0][0m [32mINFO    [0m Request 161 decode stats: t_decode=19.026338 s, decode_tokens=422, decode_time_per_token=45.086 ms/token, decode_speed=22.18 tokens/s
+[1m[2026-11-08|16:51:16|core|rank=0][0m [32mINFO    [0m Request 170 decode stats: t_decode=14.464852 s, decode_tokens=324, decode_time_per_token=44.645 ms/token, decode_speed=22.40 tokens/s
+[1m[2026-11-08|16:51:16|core|rank=0][0m [32mINFO    [0m Request 184 decode stats: t_decode=10.376842 s, decode_tokens=242, decode_time_per_token=42.880 ms/token, decode_speed=23.32 tokens/s
+[1m[2026-11-08|16:51:16|core|rank=0][0m [32mINFO    [0m Request 192 decode stats: t_decode=9.121463 s, decode_tokens=225, decode_time_per_token=40.540 ms/token, decode_speed=24.67 tokens/s
+[1m[2026-11-08|16:51:17|core|rank=0][0m [32mINFO    [0m Request 100 decode stats: t_decode=42.932269 s, decode_tokens=767, decode_time_per_token=55.974 ms/token, decode_speed=17.87 tokens/s
+[1m[2026-11-08|16:51:17|core|rank=0][0m [32mINFO    [0m Request 95 decode stats: t_decode=44.045342 s, decode_tokens=789, decode_time_per_token=55.824 ms/token, decode_speed=17.91 tokens/s
+[1m[2026-11-08|16:51:17|core|rank=0][0m [32mINFO    [0m Request 189 decode stats: t_decode=10.600246 s, decode_tokens=262, decode_time_per_token=40.459 ms/token, decode_speed=24.72 tokens/s
+[1m[2026-11-08|16:51:17|core|rank=0][0m [32mINFO    [0m Request 160 decode stats: t_decode=21.234205 s, decode_tokens=483, decode_time_per_token=43.963 ms/token, decode_speed=22.75 tokens/s
+[1m[2026-11-08|16:51:17|core|rank=0][0m [32mINFO    [0m Request 165 decode stats: t_decode=17.147935 s, decode_tokens=390, decode_time_per_token=43.969 ms/token, decode_speed=22.74 tokens/s
+[1m[2026-11-08|16:51:18|core|rank=0][0m [32mINFO    [0m Request 110 decode stats: t_decode=41.763452 s, decode_tokens=767, decode_time_per_token=54.450 ms/token, decode_speed=18.37 tokens/s
+[1m[2026-11-08|16:51:18|core|rank=0][0m [32mINFO    [0m Request 120 decode stats: t_decode=35.391173 s, decode_tokens=765, decode_time_per_token=46.263 ms/token, decode_speed=21.62 tokens/s
+[1m[2026-11-08|16:51:19|core|rank=0][0m [32mINFO    [0m Request 131 decode stats: t_decode=32.234016 s, decode_tokens=725, decode_time_per_token=44.461 ms/token, decode_speed=22.49 tokens/s
+[1m[2026-11-08|16:51:19|core|rank=0][0m [32mINFO    [0m Request 178 decode stats: t_decode=17.228934 s, decode_tokens=424, decode_time_per_token=40.634 ms/token, decode_speed=24.61 tokens/s
+[1m[2026-11-08|16:51:19|core|rank=0][0m [32mINFO    [0m Request 163 decode stats: t_decode=22.436372 s, decode_tokens=539, decode_time_per_token=41.626 ms/token, decode_speed=24.02 tokens/s
+[1m[2026-11-08|16:51:20|core|rank=0][0m [32mINFO    [0m Request 135 decode stats: t_decode=31.433695 s, decode_tokens=732, decode_time_per_token=42.942 ms/token, decode_speed=23.29 tokens/s
+[1m[2026-11-08|16:51:21|core|rank=0][0m [32mINFO    [0m Request 177 decode stats: t_decode=19.112467 s, decode_tokens=501, decode_time_per_token=38.149 ms/token, decode_speed=26.21 tokens/s
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m Request 182 decode stats: t_decode=16.167529 s, decode_tokens=475, decode_time_per_token=34.037 ms/token, decode_speed=29.38 tokens/s
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m Request 175 decode stats: t_decode=20.983222 s, decode_tokens=608, decode_time_per_token=34.512 ms/token, decode_speed=28.98 tokens/s
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=0 expert=10
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=2 expert=105
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=7 expert=121
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=23 expert=83
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=28 expert=86
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=38 expert=35
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=41 expert=114
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=42 expert=122
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=44 expert=85
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=44 expert=87
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=44 expert=115
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=46 expert=59
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=47 expert=40
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=0 expert=55
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=3 expert=83
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=13 expert=116
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=14 expert=103
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=16 expert=86
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=19 expert=121
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=21 expert=109
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=25 expert=56
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=34 expert=60
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=35 expert=83
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=37 expert=116
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=39 expert=68
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=40 expert=56
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=40 expert=86
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=40 expert=96
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=41 expert=107
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=42 expert=51
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=43 expert=95
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=44 expert=35
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=44 expert=74
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=45 expert=57
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=45 expert=61
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=45 expert=96
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=45 expert=97
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=46 expert=24
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=46 expert=58
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m KV-MoE restore layer=46 expert=95
+[1m[2026-11-08|16:51:22|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3191727]
+/home/boxuan/miniconda3/envs/minisgl/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

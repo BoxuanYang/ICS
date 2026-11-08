@@ -21,8 +21,12 @@ class EngineConfig:
     attention_backend: str = "auto"
     moe_backend: str = "auto"
     expert_profile: str | None = None
-    kt_gguf_path: str | None = None
-    kt_cpu_threads: int = 32
+    max_offload_experts_num: int = 24
+    kt_weight_path: str | None = None
+    kt_cpuinfer: int = 32
+    kt_threadpool_count: int = 1
+    kt_method: str | None = None
+    kt_max_deferred_experts_per_token: int = 0
     cuda_graph_bs: List[int] | None = None
     cuda_graph_max_bs: int | None = None
     page_size: int = 1

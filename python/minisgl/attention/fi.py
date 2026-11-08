@@ -176,24 +176,63 @@ class FlashInferBackend(BaseAttnBackend):
     def forward(
         self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
     ) -> torch.Tensor:
+        # This backend receives only persistent output locations. Preserve the
+        # original contiguous store kernel even when the pool supports experts.
+        from minisgl.kvcache.mha_pool import MHAKVCache
+        MHAKVCache.store_kv(self.kvcache, k, v, batch.out_loc, layer_id)
+        return self.run_attention(q, layer_id, batch.attn_metadata)
+
+    def run_attention(
+        self, q: torch.Tensor, layer_id: int, metadata: FIMetadata, kv_cache=None, module=None
+    ) -> torch.Tensor:
+        """Run attention without storing KV.
+
+        The expert router stores KV once through its address table, then uses
+        this entry point for the persistent-only rows of a mixed batch.
+        """
         def _flatten_cache(cache: torch.Tensor) -> torch.Tensor:  # treat page = 1
+            if cache.ndim == 4 and cache.shape[1] == 1:
+                return cache
             return cache.view(-1, 1, cache.shape[2], cache.shape[3])
 
-        metadata = batch.attn_metadata
         assert isinstance(metadata, FIMetadata)
         self._initialize_metadata_once(metadata)
-        self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
-        kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
+        if kv_cache is None:
+            kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
         kv_cache = (_flatten_cache(kv_cache[0]), _flatten_cache(kv_cache[1]))
-        return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
+        if module is None:
+            return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
+        original = metadata.wrapper._cached_module
+        metadata.wrapper._cached_module = module
+        try:
+            return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
+        finally:
+            metadata.wrapper._cached_module = original
 
-    def prepare_metadata(self, batch: Batch) -> None:
+    def prepare_metadata(
+        self, batch: Batch, active_mask: list[bool] | None = None
+    ) -> None:
         reqs = batch.padded_reqs
+        if active_mask is not None and len(active_mask) != len(reqs):
+            raise ValueError("FlashInfer active mask must match padded batch size")
 
         padded_size = len(reqs)
-        seqlens_q = [req.extend_len for req in reqs]
-        seqlens_k = [req.device_len for req in reqs]
-        cached_lens = [req.cached_len for req in reqs]
+        # In a mixed expert-KV batch FlashInfer processes only persistent rows.
+        # Inactive rows use the persistent dummy page and their output is later
+        # discarded by the router.  Keeping one page per row is accepted by the
+        # graph decode wrapper, unlike a zero-length decode row.
+        seqlens_q = [
+            req.extend_len if active_mask is None or active_mask[i] else 1
+            for i, req in enumerate(reqs)
+        ]
+        seqlens_k = [
+            req.device_len if active_mask is None or active_mask[i] else 1
+            for i, req in enumerate(reqs)
+        ]
+        cached_lens = [
+            req.cached_len if active_mask is None or active_mask[i] else 0
+            for i, req in enumerate(reqs)
+        ]
         max_seqlen_q = max(seqlens_q)
         CPU_KWARGS = {"device": "cpu", "dtype": torch.int32, "pin_memory": True}
 
@@ -208,11 +247,24 @@ class FlashInferBackend(BaseAttnBackend):
             cu_seqlens_q_cpu = torch.tensor([0] + seqlens_q, **CPU_KWARGS).cumsum_(dim=0)
 
         page_table = get_global_ctx().page_table
+        dummy_page = torch.tensor(
+            [self.kvcache.allocator.persistent_capacity_blocks],
+            dtype=torch.int32,
+            device=device,
+        ) if active_mask is not None else None
+        indices = torch.cat(
+            [
+                page_table[req.table_idx, : req.device_len]
+                if active_mask is None or active_mask[i]
+                else dummy_page
+                for i, req in enumerate(reqs)
+            ]
+        )
         batch.attn_metadata = FIMetadata(
             cu_seqlens_q_cpu=cu_seqlens_q_cpu,
             cu_seqlens_k_cpu=cu_seqlens_k_cpu,
             cu_seqlens_q_gpu=cu_seqlens_q_cpu.to(device, non_blocking=True),
-            indices=torch.cat([page_table[req.table_idx, : req.device_len] for req in reqs]),
+            indices=indices,
             last_page_len_cpu=self._get_ones_cpu(padded_size),
             num_qo_heads=self.qo_head_local,
             num_kv_heads=self.kv_head_local,

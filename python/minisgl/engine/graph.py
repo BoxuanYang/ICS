@@ -99,35 +99,43 @@ class GraphRunner:
         self.attn_backend = attn_backend
         self.max_graph_bs = max(cuda_graph_bs) if cuda_graph_bs else 0
         self.graph_bs_list = sorted(cuda_graph_bs)
+        # CPU experts should not process artificial padding requests. Capture
+        # exact sizes for the normal hybrid decode range; retain the original
+        # graph sizes and padding policy when every expert is GPU-resident.
+        self.hybrid_bs_list = sorted(set(self.graph_bs_list) | (
+            set(range(1, min(self.max_graph_bs, 96) + 1))
+            if use_hybrid_graph is not None else set()))
         self.dummy_req = dummy_req
         self.stream = stream
         self.device = device
         self.use_hybrid_graph = use_hybrid_graph
         self._logged_replay_variants: set[str] = set()
         if capture_batch_sizes_hook is not None and self.graph_bs_list:
-            capture_batch_sizes_hook(self.graph_bs_list)
+            capture_batch_sizes_hook(self.hybrid_bs_list)
         self._capture_graphs(max_seq_len, vocab_size, model)
 
     def _capture_graphs(self, max_seq_len: int, vocab_size: int, model: BaseLLMModel):
         self.graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
+        self.moe_graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
         self.hybrid_graph_map: Dict[int, torch.cuda.CUDAGraph] = {}
         if self.max_graph_bs == 0:
             return logger.info_rank0("CUDA graph is disabled.")
 
-        self.attn_backend.init_capture_graph(max_seq_len=max_seq_len, bs_list=self.graph_bs_list)
+        self.attn_backend.init_capture_graph(max_seq_len=max_seq_len, bs_list=self.hybrid_bs_list)
 
         torch.cuda.synchronize(self.device)
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats(self.device)
 
-        logger.info_rank0(f"Start capturing CUDA graphs with sizes: {self.graph_bs_list}")
+        logger.info_rank0("Capturing pure GPU sizes %s and hybrid sizes %s",
+                          self.graph_bs_list, self.hybrid_bs_list)
         free_memory = get_free_memory(self.device)
         logger.info_rank0(f"Free GPU memory before capturing CUDA graphs: {mem_GB(free_memory)}")
 
         self.buffer = GraphCaptureBuffer.init(self.max_graph_bs, vocab_size, self.device)
 
         pbar = tqdm(
-            sorted(self.graph_bs_list, reverse=True),
+            sorted(self.hybrid_bs_list, reverse=True),
             desc="Preparing for capturing CUDA graphs...",
             unit="batch",
             disable=not get_tp_info().is_primary(),  # disable for non-primary ranks
@@ -142,21 +150,29 @@ class GraphRunner:
             self.attn_backend.prepare_for_capture(batch)
             self.buffer.set_batch(batch)
             with get_global_ctx().forward_batch(batch):
+                batch.attn_metadata.attention_hybrid = False
                 batch.attn_metadata.moe_hybrid = False
-                self.buffer.logits[:bs] = model.forward()
-                graph = torch.cuda.CUDAGraph()
-                with torch.cuda.graph(graph, pool=pool, stream=self.stream):
+                if bs in self.graph_bs_list:
                     self.buffer.logits[:bs] = model.forward()
-                if pool is None:
-                    pool = graph.pool()  # reuse one pool; graphs never run concurrently
+                    graph = torch.cuda.CUDAGraph()
+                    with torch.cuda.graph(graph, pool=pool, stream=self.stream):
+                        self.buffer.logits[:bs] = model.forward()
+                    if pool is None:
+                        pool = graph.pool()  # graphs never run concurrently
+                    self.graph_map[bs] = graph
                 if self.use_hybrid_graph is not None:
                     batch.attn_metadata.moe_hybrid = True
+                    self.buffer.logits[:bs] = model.forward()
+                    moe_graph = torch.cuda.CUDAGraph()
+                    with torch.cuda.graph(moe_graph, pool=pool, stream=self.stream):
+                        self.buffer.logits[:bs] = model.forward()
+                    self.moe_graph_map[bs] = moe_graph
+                    batch.attn_metadata.attention_hybrid = True
                     self.buffer.logits[:bs] = model.forward()
                     hybrid_graph = torch.cuda.CUDAGraph()
                     with torch.cuda.graph(hybrid_graph, pool=pool, stream=self.stream):
                         self.buffer.logits[:bs] = model.forward()
                     self.hybrid_graph_map[bs] = hybrid_graph
-            self.graph_map[bs] = graph
 
         free_memory = get_free_memory(self.device)
         logger.info_rank0(f"Free GPU memory after capturing CUDA graphs: {mem_GB(free_memory)}")
@@ -167,9 +183,18 @@ class GraphRunner:
     def replay(self, batch: Batch) -> torch.Tensor:
         assert self.can_use_cuda_graph(batch)
         self.buffer.copy_from(batch)
-        use_hybrid = self.use_hybrid_graph is not None and self.use_hybrid_graph()
-        variant = "hybrid" if use_hybrid else "pure-gpu"
-        graphs = self.hybrid_graph_map if use_hybrid else self.graph_map
+        moe_hybrid = self.use_hybrid_graph is not None and self.use_hybrid_graph()
+        attention_hybrid = bool(
+            getattr(batch.attn_metadata, "attention_hybrid", False)
+        )
+        if attention_hybrid and not moe_hybrid:
+            raise RuntimeError("Temporary KV requires an offloaded expert buffer")
+        if attention_hybrid:
+            variant, graphs = "kv+moe-hybrid", self.hybrid_graph_map
+        elif moe_hybrid:
+            variant, graphs = "moe-hybrid", self.moe_graph_map
+        else:
+            variant, graphs = "pure-gpu", self.graph_map
         if variant not in self._logged_replay_variants:
             logger.info_rank0(
                 "CUDA graph replay active: variant=%s, padded_batch_size=%d",
@@ -183,8 +208,11 @@ class GraphRunner:
         return self.buffer.logits[: batch.size]
 
     def pad_batch(self, batch: Batch) -> None:
+        graph_sizes = (self.hybrid_bs_list
+                       if self.use_hybrid_graph is not None and self.use_hybrid_graph()
+                       else self.graph_bs_list)
         padded_size = (  # choose the first available batch size
-            next(bs for bs in self.graph_bs_list if bs >= batch.size)
+            next(bs for bs in graph_sizes if bs >= batch.size)
             if self.can_use_cuda_graph(batch)
             else batch.size
         )
@@ -193,5 +221,6 @@ class GraphRunner:
     # NOTE: This must be called before freeing NCCL resources to prevent program hang
     def destroy_cuda_graphs(self) -> None:
         del self.graph_map
+        del self.moe_graph_map
         del self.hybrid_graph_map
         gc.collect()

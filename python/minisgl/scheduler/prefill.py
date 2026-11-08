@@ -43,7 +43,11 @@ class PrefillAdder:
         # TODO: consider host cache match case
         handle = self.cache_manager.match_req(req).cuda_handle
         cached_len = handle.cached_len
-        # TODO: better estimate policy
+        # Admission safety is intentionally more conservative than eviction
+        # demand: reserve the request's remaining lifetime so already-admitted
+        # decodes can always make progress. This is only an admission gate; it
+        # neither allocates pages nor triggers expert eviction. The allocator's
+        # slow path still uses only the selected batch's actual page demand.
         extend_len = req.input_len - cached_len
         estimated_len = extend_len + req.output_len
 
@@ -127,6 +131,9 @@ class PrefillManager:
         if len(self.pending_list) == 0:
             return None
 
+        pending_before = self.pending_list
+        snapshot = []
+
         # estimated offset due to in-flight decode
         adder = PrefillAdder(
             token_budget=prefill_budget,
@@ -137,7 +144,9 @@ class PrefillManager:
         reqs: List[Req] = []
         chunked_list: List[PendingReq] = []
         for pending_req in self.pending_list:
+            previous_chunk = pending_req.chunked_req
             if req := adder.try_add_one(pending_req):
+                snapshot.append((pending_req, previous_chunk))
                 pending_req.chunked_req = None
                 if isinstance(req, ChunkedReq):
                     pending_req.chunked_req = req
@@ -147,8 +156,21 @@ class PrefillManager:
                 break  # We cannot add more requests
         if len(reqs) == 0:
             return None
-        self.pending_list = chunked_list + self.pending_list[len(reqs) :]
+        self.pending_list = chunked_list + self.pending_list[len(reqs):]
+        self._selection_snapshot = (pending_before, snapshot)
         return Batch(reqs=reqs, phase="prefill")
+
+    def defer_selected_batch(self, batch: Batch) -> None:
+        """Roll back admission when the real KV allocation cannot be satisfied."""
+        pending_before, snapshot = self._selection_snapshot
+        previously_chunked = {pending.uid for pending, chunk in snapshot if chunk is not None}
+        for req in batch.reqs:
+            if req.uid not in previously_chunked:
+                self.cache_manager.unlock(req.cache_handle)
+                self.table_manager.free(req.table_idx)
+        self.pending_list = pending_before
+        for pending, chunk in snapshot:
+            pending.chunked_req = chunk
 
     def abort_req(self, uid: int) -> Req | None:
         for i, req in enumerate(self.pending_list):

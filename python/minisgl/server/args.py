@@ -69,14 +69,59 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
     parser.add_argument(
         "--expert-profile",
         default=None,
-        help="Enable single-GPU BF16 Qwen3 MoE memory sharing using this candidate file.",
+        help="Sorted cold-to-hot expert profile used for static CPU placement.",
     )
     parser.add_argument(
-        "--kt-gguf-path",
-        default=None,
-        help="GGUF file or directory used by KT for CPU experts. GPU weights still use --model-path.",
+        "--max-offload-experts-num",
+        "--max_offload_experts_num",
+        dest="max_offload_experts_num",
+        type=int,
+        default=ServerArgs.max_offload_experts_num,
+        help="Number of coldest profile experts permanently placed on CPU.",
     )
-    parser.add_argument("--kt-cpu-threads", type=int, default=ServerArgs.kt_cpu_threads)
+    parser.add_argument(
+        "--kt-weight-path",
+        "--kt-gguf-path",
+        dest="kt_weight_path",
+        default=None,
+        help="CPU expert weight file or directory used by KTransformers. "
+        "--kt-gguf-path is retained as a compatibility alias.",
+    )
+    parser.add_argument(
+        "--kt-cpuinfer",
+        "--kt-cpu-threads",
+        dest="kt_cpuinfer",
+        type=int,
+        default=ServerArgs.kt_cpuinfer,
+        help="Number of CPU inference threads. --kt-cpu-threads is a compatibility alias.",
+    )
+    parser.add_argument(
+        "--kt-threadpool-count",
+        type=int,
+        default=ServerArgs.kt_threadpool_count,
+        help="Number of KTransformers CPU worker pools.",
+    )
+    parser.add_argument(
+        "--kt-method",
+        choices=[
+            "AMXINT4",
+            "AMXINT8",
+            "RAWINT4",
+            "FP8",
+            "FP8_PERCHANNEL",
+            "BF16",
+            "LLAMAFILE",
+        ],
+        default=ServerArgs.kt_method,
+        help="KTransformers CPU inference backend. Inferred as LLAMAFILE for an "
+        "explicit weight path and BF16 otherwise when omitted.",
+    )
+    parser.add_argument(
+        "--kt-max-deferred-experts-per-token",
+        type=int,
+        default=ServerArgs.kt_max_deferred_experts_per_token,
+        help="Number of CPU experts per token deferred for pipelined execution.",
+    )
 
     parser.add_argument(
         "--model-path",
@@ -246,8 +291,8 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
 
     if kwargs["model_path"].startswith("~"):
         kwargs["model_path"] = os.path.expanduser(kwargs["model_path"])
-    if kwargs["kt_gguf_path"] and kwargs["kt_gguf_path"].startswith("~"):
-        kwargs["kt_gguf_path"] = os.path.expanduser(kwargs["kt_gguf_path"])
+    if kwargs["kt_weight_path"] and kwargs["kt_weight_path"].startswith("~"):
+        kwargs["kt_weight_path"] = os.path.expanduser(kwargs["kt_weight_path"])
 
     if kwargs["model_source"] == "modelscope":
         model_path = kwargs["model_path"]

@@ -35,6 +35,24 @@ def test_real_profile_matches_documented_shape_and_order() -> None:
     assert profile.entries[-1].key == (0, 117)
 
 
+def test_full_json_profile_and_cold_prefix() -> None:
+    path = Path(__file__).parents[2] / "30B_experts_frequency_sorted.json"
+    profile = ExpertEvictionProfile.from_file(path)
+
+    assert len(profile.entries) == 6144
+    assert profile.entries[0].key == (45, 97)
+    assert profile.entries[0].activation_frequency == pytest.approx(
+        3.179518096323107e-05
+    )
+
+    coldest = profile.prefix(192)
+    assert len(coldest.entries) == 192
+    assert coldest.entries == profile.entries[:192]
+    assert len(coldest.allowed_keys) == 192
+
+    assert profile.prefix(100).entries == profile.entries[:100]
+
+
 def test_profile_rejects_unsorted_and_duplicate_entries() -> None:
     with pytest.raises(ValueError, match="sorted"):
         ExpertEvictionProfile(

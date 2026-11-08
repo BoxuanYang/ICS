@@ -37,8 +37,8 @@ if TYPE_CHECKING:
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_RATES = tuple(range(1, 21))
-DEFAULT_DURATION_PER_RATE_SECONDS = 200.0
+DEFAULT_RATES = ((1,3,5,7,9,11))
+DEFAULT_DURATION_PER_RATE_SECONDS = 100.0
 SHAREGPT_REPO_ID = "anon8231489123/ShareGPT_Vicuna_unfiltered"
 SHAREGPT_FILENAME = "ShareGPT_V3_unfiltered_cleaned_split.json"
 
@@ -79,7 +79,7 @@ def parse_args() -> argparse.Namespace:
             "actual output tokens."
         )
     )
-    parser.add_argument("--base-url", default="http://127.0.0.1:1919")
+    parser.add_argument("--base-url", default="http://127.0.0.6:2000")
     parser.add_argument(
         "--model",
         default=None,

@@ -26,8 +26,10 @@ class DecodeManager:
 
     @property
     def inflight_tokens(self) -> int:
-        tokens_reserved = (self.page_size - 1) * len(self.running_reqs)  # 1 page reserved
-        return sum(req.remain_len for req in self.running_reqs) + tokens_reserved
+        # Lifetime reservation used only by prefill admission. Actual decode
+        # allocation and eviction continue to operate one batch at a time.
+        page_tail = (self.page_size - 1) * len(self.running_reqs)
+        return sum(req.remain_len for req in self.running_reqs) + page_tail
 
     def schedule_next_batch(self) -> Batch | None:
         if not self.runnable:
