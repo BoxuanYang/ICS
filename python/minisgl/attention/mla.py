@@ -137,9 +137,6 @@ class MLABackend(BaseAttnBackend):
             self.graph_indices,
             self.graph_lengths[:bs],
         )
-        # Plans run serially on the engine stream; share the workspaces across sizes.
-        wrapper._int_workspace_buffer = self.eager._int_workspace_buffer
-        wrapper._pin_memory_int_workspace_buffer = self.eager._pin_memory_int_workspace_buffer
         self.graphs[bs] = wrapper
         self.prepare_for_replay(batch)
 
