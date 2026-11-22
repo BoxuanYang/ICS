@@ -32,10 +32,15 @@ class ModelConfig:
     norm_topk_prob: bool
     model_type: str
     architectures: list[str]
+    kv_lora_rank: int = 0
+    qk_nope_head_dim: int = 0
+    v_head_dim: int = 0
+    n_shared_experts: int = 0
+    first_k_dense_replace: int = 0
 
     @property
     def is_moe(self) -> bool:
-        return "moe" in self.model_type
+        return self.model_type == "deepseek_v2" or "moe" in self.model_type
 
     @classmethod
     def from_hf(cls, config: PretrainedConfig) -> ModelConfig:
@@ -59,6 +64,22 @@ class ModelConfig:
         # Llama/Qwen: rope_theta is a direct attr; Mistral: it's inside rope_scaling dict
         rope_scaling = getattr(config, "rope_scaling", None)
         rope_theta = getattr(config, "rope_theta", None) or rope_scaling["rope_theta"]
+        rotary_dim = head_dim
+        if model_type == "deepseek_v2":
+            if (config.q_lora_rank is not None or config.topk_method != "greedy"
+                    or getattr(config, "scoring_func", "softmax") != "softmax"
+                    or config.routed_scaling_factor != 1 or getattr(config, "moe_layer_freq", 1) != 1
+                    or config.attention_bias or getattr(config, "mlp_bias", False)):
+                raise ValueError("Expected DeepSeek-V2-Lite attention and routing configuration")
+            num_experts = config.n_routed_experts
+            num_kv_heads = config.num_attention_heads
+            rotary_dim = config.qk_rope_head_dim
+            head_dim = config.qk_nope_head_dim + rotary_dim
+            if (config.kv_lora_rank, rotary_dim) != (512, 64):
+                raise ValueError("DeepSeek-V2-Lite MLA requires 512 latent and 64 rotary channels")
+            if rope_scaling:
+                rope_scaling = dict(rope_scaling)
+                rope_scaling.setdefault("rope_type", rope_scaling.get("type", "default"))
 
         return cls(
             num_layers=config.num_hidden_layers,
@@ -73,7 +94,7 @@ class ModelConfig:
             tie_word_embeddings=tie_word_embeddings,
             rotary_config=RotaryConfig(
                 head_dim=head_dim,
-                rotary_dim=head_dim,
+                rotary_dim=rotary_dim,
                 max_position=config.max_position_embeddings,
                 base=rope_theta,
                 scaling=rope_scaling,
@@ -84,4 +105,9 @@ class ModelConfig:
             norm_topk_prob=norm_topk_prob,
             model_type=model_type,
             architectures=architectures,
+            kv_lora_rank=getattr(config, "kv_lora_rank", 0),
+            qk_nope_head_dim=getattr(config, "qk_nope_head_dim", 0),
+            v_head_dim=getattr(config, "v_head_dim", 0),
+            n_shared_experts=getattr(config, "n_shared_experts", 0),
+            first_k_dense_replace=getattr(config, "first_k_dense_replace", 0),
         )

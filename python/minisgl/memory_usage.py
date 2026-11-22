@@ -22,7 +22,7 @@ def model_weight_allocation(model) -> ModelWeightAllocation:
     for name, tensor in model.state_dict().items():
         parameters = tensor.numel()
         nbytes = parameters * tensor.element_size()
-        if ".mlp.experts." in name:
+        if ".mlp.experts." in name or ".mlp.shared_experts." in name:
             moe_parameters += parameters
             moe_nbytes += nbytes
         else:

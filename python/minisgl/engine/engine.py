@@ -54,11 +54,16 @@ class Engine:
 
         self.expert_memory = None
         self.kt_backend = None
+        catalog = None
         if config.expert_profile:
             from minisgl.moe import ExpertEvictionProfile, ExpertStorageCatalog
             from minisgl.moe.kt import KTExperts
 
-            layers = [layer.mlp.experts for layer in self.model.model.layers.op_list]
+            layers = [
+                layer.mlp.experts
+                for layer in self.model.model.layers.op_list
+                if hasattr(layer.mlp, "experts")
+            ]
             profile = ExpertEvictionProfile.from_file(config.expert_profile).prefix(config.max_offload_experts_num)
             catalog = ExpertStorageCatalog.from_layers(layers, profile)
             if config.kt_weight_path:
@@ -91,19 +96,18 @@ class Engine:
         # ======================= KV cache initialization ========================
         self.num_pages = self._determine_num_pages(init_free_memory, config)
         num_tokens = self.num_pages * config.page_size
-        if config.expert_profile:
-            from minisgl.kvcache.expert_pool import ExpertKVCache
-            from minisgl.moe import ExpertMemoryManager, ExpertOffloadController
+        mla = config.model_config.model_type == "deepseek_v2"
+        if mla:
+            from minisgl.kvcache.mla_pool import MLAKVCache
 
-            self.kv_cache = ExpertKVCache(config.model_config, self.num_pages, self.device, catalog)
-            kt.kv_pool = self.kv_cache
-            self.expert_memory = ExpertMemoryManager(
-                ExpertOffloadController(profile),
-                catalog,
-                self.kv_cache.allocator,
-                kt,
-                transition_barrier=self.stream.synchronize,
-                max_offloaded_experts=config.max_offload_experts_num,
+            self.kv_cache = MLAKVCache(
+                config.model_config, self.num_pages, self.device, self.dtype, catalog
+            )
+        elif catalog is not None:
+            from minisgl.kvcache.expert_pool import ExpertKVCache
+
+            self.kv_cache = ExpertKVCache(
+                config.model_config, self.num_pages, self.device, catalog
             )
         else:
             self.kv_cache = create_kvcache_pool(
@@ -114,6 +118,18 @@ class Engine:
                 dtype=self.dtype,
             )
         self.ctx.kv_cache = self.kv_cache
+        if catalog is not None:
+            from minisgl.moe import ExpertMemoryManager, ExpertOffloadController
+
+            kt.kv_pool = self.kv_cache
+            self.expert_memory = ExpertMemoryManager(
+                ExpertOffloadController(profile),
+                catalog,
+                self.kv_cache.allocator,
+                kt,
+                transition_barrier=self.stream.synchronize,
+                max_offloaded_experts=config.max_offload_experts_num,
+            )
 
         weight_allocation = model_weight_allocation(self.model)
         logger.info_rank0(
@@ -143,7 +159,11 @@ class Engine:
         )
 
         # ======================= Attention & MoE backend initialization ========================
-        if config.expert_profile:
+        if mla:
+            from minisgl.attention.mla import MLABackend
+
+            self.attn_backend = MLABackend(config.model_config)
+        elif config.expert_profile:
             from minisgl.attention.expert import IndirectExpertAttentionRouter
 
             self.attn_backend = IndirectExpertAttentionRouter(config.model_config, kt.has_offloaded_experts)
@@ -239,14 +259,13 @@ class Engine:
 
     def _determine_num_pages(self, old_free_memory: int, config: EngineConfig) -> int:
         new_free_memory = self._sync_get_memory()[1]
-        cache_per_page = (
-            2  # key + value
-            * config.model_config.head_dim
-            * div_even(config.model_config.num_kv_heads, config.tp_info.size, allow_replicate=True)
-            * config.page_size
-            * self.dtype.itemsize
-            * config.model_config.num_layers
-        )
+        model = config.model_config
+        if model.model_type == "deepseek_v2":
+            width = model.kv_lora_rank + model.rotary_config.rotary_dim
+        else:
+            kv_heads = div_even(model.num_kv_heads, config.tp_info.size, allow_replicate=True)
+            width = 2 * model.head_dim * kv_heads
+        cache_per_page = config.page_size * model.num_layers * width * self.dtype.itemsize
         num_pages = config.num_page_override
         if num_pages is None:
             model_memory = old_free_memory - new_free_memory
@@ -317,16 +336,22 @@ def _adjust_config(config: EngineConfig):
     if config.expert_profile:
         if config.dtype != torch.bfloat16:
             raise ValueError("Expert memory sharing requires BF16")
-        if config.model_config.model_type != "qwen3_moe" or config.use_dummy_weight:
-            raise ValueError("Expert memory sharing requires a real Qwen3 MoE checkpoint")
+        if config.model_config.model_type not in ("qwen3_moe", "deepseek_v2") or config.use_dummy_weight:
+            raise ValueError("Expert memory sharing requires a Qwen3 MoE or DeepSeek-V2-Lite checkpoint")
         if config.page_size != 1 or config.kt_cpuinfer < 1:
             raise ValueError("Expert memory sharing requires page_size=1 and positive KT threads")
         logger.info_rank0(
-            "KV-MoE enabled: indirect FlashInfer, three CUDA graph variants, "
+            "KV-MoE enabled: expert-backed pages, three CUDA graph variants, "
             "and overlapped scheduling"
         )
 
-    if config.attention_backend == "auto":
+    if config.model_config.model_type == "deepseek_v2":
+        if config.dtype not in (torch.bfloat16, torch.float16):
+            raise ValueError("FlashInfer MLA requires BF16 or FP16")
+        if config.page_size != 1 or config.attention_backend not in ("auto", "fi"):
+            raise ValueError("DeepSeek-V2-Lite supports FlashInfer MLA with --page-size 1")
+        override("attention_backend", "fi")
+    elif config.attention_backend == "auto":
         backend = "trtllm" if is_sm100_supported() else ("fa,fi" if is_sm90_supported() else "fi")
         override("attention_backend", backend)
         logger.info_rank0(f"Auto-selected attention backend: {config.attention_backend}")

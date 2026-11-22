@@ -114,6 +114,23 @@ but cached prefixes retain KV ownership until evicted.
 
 See [the implementation report](docs/kv_moe_implementation.md) for changes and validation.
 
+### DeepSeek-V2-Lite
+
+Start BF16 serving with the official checkpoint or a local checkpoint directory:
+
+```bash
+python -m minisgl --model-path deepseek-ai/DeepSeek-V2-Lite --dtype bfloat16 --page-size 1
+```
+
+The FlashInfer MLA path stores 512 latent and 64 rotary-key elements per layer
+and token (1,152 BF16 bytes, or 31,104 bytes across 27 layers per TP rank).
+For dynamic KV–MoE, add `--expert-profile PATH` with a cold-to-hot profile
+for this model (layer IDs 1–26, routed expert IDs 0–63). Layer 0 is dense;
+shared experts run on GPU. Optional KT CPU weights must match this checkpoint.
+Persistent pages use FlashInfer MLA for prefill and decode. For batches using
+expert-backed pages, prefill gathers the referenced compressed rows one layer
+at a time for FlashInfer; decode attends directly through a row-address table.
+
 <details>
 <summary><b>💡 Installing on Windows (WSL2)</b></summary>
 

@@ -19,6 +19,9 @@ class Qwen3DecoderLayer(BaseOP):
     def __init__(self, config: ModelConfig, layer_id: int):
         self.self_attn = Qwen3Attn(config, layer_id, has_qk_norm=True)
         self.mlp = Qwen3MLP(config, layer_id)
+        self._init_norms(config, layer_id)
+
+    def _init_norms(self, config: ModelConfig, layer_id: int):
         self.input_layernorm = RMSNormFused(
             size=config.hidden_size,
             eps=config.rms_norm_eps,
@@ -42,13 +45,13 @@ class Qwen3DecoderLayer(BaseOP):
 
 
 class Qwen3Model(BaseOP):
-    def __init__(self, config: ModelConfig):
+    def __init__(self, config: ModelConfig, decoder_layer=Qwen3DecoderLayer):
         self.embed_tokens = VocabParallelEmbedding(
             num_embeddings=config.vocab_size,
             embedding_dim=config.hidden_size,
         )
         self.layers = OPList(
-            [Qwen3DecoderLayer(config, layer_id) for layer_id in range(config.num_layers)]
+            [decoder_layer(config, layer_id) for layer_id in range(config.num_layers)]
         )
         self.norm = RMSNormFused(
             size=config.hidden_size,
@@ -64,8 +67,10 @@ class Qwen3Model(BaseOP):
 
 
 class Qwen3MoeForCausalLM(BaseLLMModel):
+    decoder_layer = Qwen3DecoderLayer
+
     def __init__(self, config: ModelConfig):
-        self.model = Qwen3Model(config)
+        self.model = Qwen3Model(config, self.decoder_layer)
         self.lm_head = ParallelLMHead(
             num_embeddings=config.vocab_size,
             embedding_dim=config.hidden_size,

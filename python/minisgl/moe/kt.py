@@ -145,7 +145,7 @@ class KTExperts:
         with torch.cuda.stream(stream):
             self.gpu_masks[layer][expert] = False
             self.gpu_expert_maps[layer][expert] = -1
-            if hasattr(self, "kv_pool"):
+            if hasattr(getattr(self, "kv_pool", None), "set_expert_active"):
                 self.kv_pool.set_expert_active(key, True)
         self.offloaded[layer].add(expert)
 
@@ -158,7 +158,7 @@ class KTExperts:
         # A speculative decode may still read logically released KV pages.
         if self.commit_stream is not None:
             with torch.cuda.stream(self.commit_stream):
-                if hasattr(self, "kv_pool"):
+                if hasattr(getattr(self, "kv_pool", None), "set_expert_active"):
                     self.kv_pool.set_expert_active(key, False)
             self.fetch_stream.wait_stream(self.commit_stream)
         with torch.cuda.stream(self.fetch_stream):

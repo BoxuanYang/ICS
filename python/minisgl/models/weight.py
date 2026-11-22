@@ -10,7 +10,7 @@ from minisgl.distributed import get_tp_info
 from minisgl.utils import cached_load_hf_config, div_ceil, download_hf_weight
 from tqdm import tqdm
 
-_SPLIT_DIM_0 = [".q_proj", ".k_proj", ".v_proj", ".gate_proj", ".up_proj"]
+_SPLIT_DIM_0 = [".q_proj", ".k_proj", ".v_proj", ".gate_proj", ".up_proj", ".kv_b_proj"]
 _SPLIT_DIM_1 = [".o_proj", ".down_proj"]
 
 # Merge groups: individual projections -> fused projection
@@ -97,7 +97,10 @@ def load_weight(model_path: str, device: torch.device) -> Iterator[Tuple[str, to
                 tensor = _shard_tensor(name, raw, tp_info.rank, tp_info.size, config.num_kv_heads)
                 del raw
 
-                if (info := _get_merge_info(name)) is None:
+                info = _get_merge_info(name)
+                if config.model_type == "deepseek_v2" and name.endswith(".self_attn.q_proj.weight"):
+                    info = None  # MLA has a standalone Q projection.
+                if info is None:
                     out = (name, tensor)
                 else:
                     merged_key, slot, all_slots = info
