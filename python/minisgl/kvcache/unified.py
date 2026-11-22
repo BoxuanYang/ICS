@@ -178,6 +178,7 @@ class UnifiedKVAllocator:
             persistent=True,
         )
         self._temporary_regions: dict[RegionId, TemporaryKVRegion] = {}
+        self._expert_regions: dict[ExpertKey, list[TemporaryKVRegion]] = {}
         self.on_expert_release: Callable[[ExpertKey], None] | None = None
 
     @property
@@ -214,6 +215,8 @@ class UnifiedKVAllocator:
         if region.block_nbytes != self.persistent_region.block_nbytes:
             raise ValueError("All regions must use the same KV allocation unit")
         self._temporary_regions[region.region_id] = region
+        assert region.owner_expert is not None
+        self._expert_regions.setdefault(region.owner_expert, []).append(region)
 
     def region(self, region_id: RegionId) -> TemporaryKVRegion:
         if region_id == self.PERSISTENT_REGION_ID:
@@ -228,23 +231,17 @@ class UnifiedKVAllocator:
             raise TypeError("Block count must be an integer")
         if count < 0:
             raise ValueError("Block count must be non-negative")
-        if count > self.available_blocks:
+        persistent = self.persistent_available_blocks
+        if count <= persistent:
+            return self.persistent_region.allocate(count)
+        available = persistent + self.temporary_available_blocks
+        if count > available:
             raise MemoryError(
-                f"Unified KV allocator has {self.available_blocks} free blocks, "
+                f"Unified KV allocator has {available} free blocks, "
                 f"but {count} were requested"
             )
-
-        remaining = count
-        allocated: list[KVBlockRef] = []
-        regions = (self.persistent_region, *self._temporary_regions.values())
-        for region in regions:
-            take = min(remaining, region.free_blocks)
-            if take:
-                allocated.extend(region.allocate(take))
-                remaining -= take
-            if remaining == 0:
-                break
-        return tuple(allocated)
+        blocks = self.persistent_region.allocate(persistent)
+        return blocks + self._take_temporary(count - persistent)
 
     def allocate_persistent(self, count: int) -> tuple[KVBlockRef, ...]:
         """Allocate only from the normal KV pool.
@@ -262,22 +259,40 @@ class UnifiedKVAllocator:
             raise TypeError("Block count must be an integer")
         if count < 0:
             raise ValueError("Block count must be non-negative")
-        if count > self.temporary_available_blocks:
+        if count == 0:
+            return ()
+        available = self.temporary_available_blocks
+        if count > available:
             raise MemoryError(
-                f"Temporary KV regions have {self.temporary_available_blocks} "
+                f"Temporary KV regions have {available} "
                 f"free blocks, but {count} were requested"
             )
+        return self._take_temporary(count)
 
-        remaining = count
+    def _take_temporary(self, count: int) -> tuple[KVBlockRef, ...]:
+        # Both weight slices must be empty before an expert can be restored.
+        # Rank the expert as a whole, including completely full slices.
+        candidates = []
+        for regions in self._expert_regions.values():
+            free = sum(region.free_blocks for region in regions)
+            if free:
+                live = sum(region.live_blocks for region in regions)
+                candidates.append((live / (live + free), regions))
+
+        # Stable sorts preserve registration order on ties. Filling an expert
+        # only increases its occupancy, so its rank cannot fall mid-allocation.
         allocated: list[KVBlockRef] = []
-        for region in self._temporary_regions.values():
-            take = min(remaining, region.free_blocks)
-            if take:
+        for _, regions in sorted(candidates, key=lambda item: item[0], reverse=True):
+            usable = (region for region in regions if region.free_blocks)
+            for region in sorted(
+                usable, key=lambda r: r.live_blocks / r.capacity_blocks, reverse=True
+            ):
+                take = min(count, region.free_blocks)
                 allocated.extend(region.allocate(take))
-                remaining -= take
-            if remaining == 0:
-                break
-        return tuple(allocated)
+                count -= take
+                if count == 0:
+                    return tuple(allocated)
+        raise AssertionError("Temporary KV capacity changed during allocation")
 
     def release(self, blocks: Iterable[KVBlockRef]) -> None:
         """Release final KV ownership, after ordering GPU accesses in the caller.

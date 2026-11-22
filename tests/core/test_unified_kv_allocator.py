@@ -51,6 +51,38 @@ def test_unified_allocator_prefers_persistent_then_temporary_regions() -> None:
     assert allocator.available_blocks == 1
 
 
+@pytest.mark.parametrize("method", ["allocate", "allocate_temporary"])
+def test_best_fit_packs_the_fullest_expert_after_releases(method: str) -> None:
+    allocator = UnifiedKVAllocator(persistent_capacity_blocks=1, block_nbytes=16)
+    gate_a, down_a = _temporary("gate-0", 8), _temporary("down-0", 4)
+    gate_b, down_b = _temporary("gate-1", 4), _temporary("down-1", 2)
+    for region in (gate_a, down_a, gate_b, down_b):
+        allocator.register_temporary_region(region)
+        region.activate()
+
+    persistent = allocator.allocate(1)
+    gate_a.allocate(5)
+    held_b = gate_b.allocate(4)
+    allocate = getattr(allocator, method)
+    # B is 4/6 full and A is 5/12 full. B's full gate counts toward its occupancy.
+    assert [b.region_id for b in allocate(3)] == ["down-1", "down-1", "gate-0"]
+    allocator.release(held_b)
+    # B is now 2/6 full and A is 6/12 full.
+    assert [b.region_id for b in allocate(1)] == ["gate-0"]
+    allocator.release(persistent)
+    assert [b.region_id for b in allocator.allocate(2)] == ["persistent", "gate-0"]
+
+
+def test_best_fit_prefers_fuller_slice_within_an_expert() -> None:
+    allocator = UnifiedKVAllocator(persistent_capacity_blocks=0, block_nbytes=16)
+    gate, down = _temporary("gate-0", 8), _temporary("down-0", 4)
+    for region in (gate, down):
+        allocator.register_temporary_region(region)
+        region.activate()
+        region.allocate(2)
+    assert [b.region_id for b in allocator.allocate(3)] == ["down-0", "down-0", "gate-0"]
+
+
 def test_reclaim_requires_zero_live_blocks() -> None:
     allocator = UnifiedKVAllocator(persistent_capacity_blocks=0, block_nbytes=16)
     region = _temporary("temporary-0", blocks=3)

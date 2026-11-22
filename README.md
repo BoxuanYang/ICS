@@ -83,6 +83,10 @@ cd ../../..
 The KV–MoE work currently targets a single GPU running Qwen3-30B-A3B.
 `coldest_experts.txt` is the ordered eviction allowlist; the initial policy has
 no cumulative-frequency limit and exposes `check_stop_moe_eviction()` for later changes.
+KV allocation uses free persistent pages first. For overflow, it fills the offloaded
+expert with the highest fraction of live KV pages across its gate/up and down regions.
+Within that expert it fills the more occupied region first. Ties follow registration
+order. Page releases affect the ranking on the next allocation.
 Restoration is eager: once both regions belonging to an offloaded expert have
 released their final KV references, restore that expert immediately, regardless
 of global pressure or profile order. Prefix-cache references count as live KV.
