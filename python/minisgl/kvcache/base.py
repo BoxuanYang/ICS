@@ -36,6 +36,12 @@ class BaseKVCachePool(ABC):
     @abstractmethod
     def num_layers(self) -> int: ...
 
+    @property
+    @abstractmethod
+    def allocated_nbytes(self) -> int:
+        """Bytes owned by the dedicated physical KV-cache allocation."""
+        ...
+
 
 @dataclass(frozen=True)
 class BaseCacheHandle(ABC):

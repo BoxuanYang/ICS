@@ -66,3 +66,7 @@ class MHAKVCache(BaseKVCachePool):
     @property
     def num_layers(self) -> int:
         return self._num_layers
+
+    @property
+    def allocated_nbytes(self) -> int:
+        return self._kv_buffer.numel() * self._kv_buffer.element_size()

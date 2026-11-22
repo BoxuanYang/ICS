@@ -9,6 +9,7 @@ from minisgl.core import Batch, Context, Req, set_global_ctx
 from minisgl.distributed import destroy_distributed, enable_pynccl_distributed, set_tp_info
 from minisgl.kvcache import create_kvcache_pool
 from minisgl.layers import set_rope_device
+from minisgl.memory_usage import model_weight_allocation
 from minisgl.models import create_model, load_weight
 from minisgl.moe import create_moe_backend
 from minisgl.utils import div_even, init_logger, is_sm90_supported, is_sm100_supported, torch_dtype
@@ -113,6 +114,22 @@ class Engine:
                 dtype=self.dtype,
             )
         self.ctx.kv_cache = self.kv_cache
+
+        weight_allocation = model_weight_allocation(self.model)
+        logger.info_rank0(
+            "GPU allocation summary (rank-local): "
+            "kv_cache_bytes=%d (%s), "
+            "moe_weight_parameters=%d, moe_weight_bytes=%d (%s), "
+            "other_weight_parameters=%d, other_weight_bytes=%d (%s)",
+            self.kv_cache.allocated_nbytes,
+            mem_GB(self.kv_cache.allocated_nbytes),
+            weight_allocation.moe.parameters,
+            weight_allocation.moe.nbytes,
+            mem_GB(weight_allocation.moe.nbytes),
+            weight_allocation.other.parameters,
+            weight_allocation.other.nbytes,
+            mem_GB(weight_allocation.other.nbytes),
+        )
 
         # ======================= Page table initialization ========================
         # NOTE: 1. aligned to 128 bytes; 2. store raw locations instead of pages
